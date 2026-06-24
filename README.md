@@ -23,8 +23,10 @@ pyproject.toml          # root uv workspace
 packages/
   core/                 # settings, telemetry, Agent Bridge, the seo-platform CLI
   engine/               # SQLModel state store + thread-safe DuckDB analytics broker
+  scout/                # arbitrage miner + multi-source candidate discovery
+  compiler/             # Astro hydration compiler; ships the directory/calculator
+                        #   themes as package data under src/dsf_compiler/templates/
 apps/                   # (reserved) FastAPI api + operator dashboard — Phase 8
-templates/              # (reserved) Astro directory/calculator themes — Phase 4
 data/                   # generated state stores + agent mock fixtures
 scripts/                # standalone verification / fleet scripts
 ```

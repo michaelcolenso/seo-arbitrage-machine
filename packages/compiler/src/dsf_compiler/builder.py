@@ -18,7 +18,7 @@ import traceback
 from pathlib import Path
 from typing import Any
 
-from dsf_core.config import Settings, find_workspace_root, get_settings
+from dsf_core.config import Settings, get_settings
 from dsf_core.telemetry import get_logger, log_event
 from dsf_engine.duckdb_engine import DuckDBBroker, DuckDBError
 from dsf_engine.models import (
@@ -67,7 +67,10 @@ class SiteCompiler:
         row_limit: int = 500,
     ) -> None:
         self.settings = settings or get_settings()
-        self.templates_dir = templates_dir or (find_workspace_root() / "templates")
+        # Templates ship as package data next to this module, so they resolve
+        # correctly from an installed wheel as well as the source workspace —
+        # never depending on the current working directory.
+        self.templates_dir = templates_dir or (Path(__file__).resolve().parent / "templates")
         self.row_limit = row_limit
 
     def compile(

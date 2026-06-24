@@ -143,6 +143,18 @@ def test_compile_missing_dataset_reflects_and_fails(isolated_env: Path) -> None:
     assert site.log_trace is not None
 
 
+def test_templates_resolve_as_package_data(isolated_env: Path) -> None:
+    """Templates ship with the package and resolve without a workspace/CWD."""
+    settings = reload_settings()
+    compiler = SiteCompiler(settings=settings)
+    # Default templates_dir is the package-relative location (wheel-safe).
+    assert compiler.templates_dir.is_dir()
+    assert (compiler.templates_dir / "directory" / "src" / "pages" / "index.astro").is_file()
+    assert (compiler.templates_dir / "calculator" / "src" / "pages" / "index.astro").is_file()
+    # It lives inside the installed dsf_compiler package, not the repo root.
+    assert compiler.templates_dir.parent.name == "dsf_compiler"
+
+
 def test_compile_unknown_evaluation(isolated_env: Path) -> None:
     settings = reload_settings()
     init_db(settings)
