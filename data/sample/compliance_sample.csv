@@ -1,0 +1,9 @@
+company,city,category,violations,penalty_usd
+Acme Chemical Co,Austin,chemical,3,42000
+Globex HVAC,Denver,hvac,1,8500
+Initech Compliance,Austin,chemical,0,0
+Umbrella Industrial,Phoenix,chemical,5,91000
+Stark Safety Systems,Denver,hvac,2,15500
+Wayne Facilities,Austin,electrical,1,6200
+Soylent Processing,Phoenix,chemical,4,73000
+Tyrell Mechanical,Denver,hvac,0,0

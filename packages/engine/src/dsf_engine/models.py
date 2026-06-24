@@ -104,6 +104,9 @@ class SiteGeneration(SQLModel, table=True):
     dataset_profile_id: int | None = Field(
         default=None, foreign_key="dataset_profiles.id", index=True
     )
+    evaluation_id: int | None = Field(
+        default=None, foreign_key="evaluations.id", index=True
+    )
     template_type: TemplateType = Field(default=TemplateType.DIRECTORY)
     status: JobStatus = Field(default=JobStatus.PENDING, index=True)
     build_path: str | None = Field(default=None)
