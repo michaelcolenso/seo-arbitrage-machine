@@ -75,7 +75,7 @@ def test_compile_hydrates_directory_site(isolated_env: Path) -> None:
 
     build_dir = Path(report.build_path)
     assert build_dir.is_dir()
-    assert build_dir.name == _slugify("b2b_industrial_chemical_compliance")
+    assert build_dir.name == f"{_slugify('b2b_industrial_chemical_compliance')}-e{evaluation_id}"
 
     rows = json.loads((build_dir / "src" / "data" / "rows.json").read_text())
     meta = json.loads((build_dir / "src" / "data" / "meta.json").read_text())
@@ -143,3 +143,24 @@ def test_compile_unknown_evaluation(isolated_env: Path) -> None:
     report = SiteCompiler(settings=settings).compile(999, isolated_env / "x.csv")
     assert report.status == "AGENT_ACTION_REQUIRED"
     assert report.error_type == "EvaluationNotFound"
+
+
+def test_compile_same_niche_uses_distinct_build_dirs(isolated_env: Path) -> None:
+    """Two approved evaluations sharing a niche must not overwrite each other."""
+    settings = reload_settings()
+    eval_a = _seed_evaluation(settings, template_type=TemplateType.DIRECTORY)
+    eval_b = _seed_evaluation(settings, template_type=TemplateType.CALCULATOR)
+    dataset = _write_dataset(isolated_env)
+
+    compiler = SiteCompiler(settings=settings)
+    report_a = compiler.compile(eval_a, dataset)
+    report_b = compiler.compile(eval_b, dataset)
+
+    assert report_a.build_path != report_b.build_path
+    # The earlier build survives the later compile of the same niche.
+    assert Path(report_a.build_path).is_dir()
+    assert Path(report_b.build_path).is_dir()
+    meta_a = json.loads((Path(report_a.build_path) / "src" / "data" / "meta.json").read_text())
+    meta_b = json.loads((Path(report_b.build_path) / "src" / "data" / "meta.json").read_text())
+    assert meta_a["template_type"] == "directory"
+    assert meta_b["template_type"] == "calculator"

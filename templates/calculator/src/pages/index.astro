@@ -32,13 +32,13 @@ const inputs: { key: string; label: string; default: number; weight: number }[] 
         class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
       >
         <div class="grid gap-5">
-          {inputs.map((input) => (
+          {inputs.map((input, idx) => (
             <label class="block">
               <span class="mb-1 block text-sm font-medium text-slate-700">{input.label}</span>
               <input
                 type="number"
                 step="any"
-                x-model.number={`values['${input.key}']`}
+                x-model.number={`values[inputs[${idx}].key]`}
                 class="w-full rounded-lg border border-slate-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
             </label>

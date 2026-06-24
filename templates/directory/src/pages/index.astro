@@ -45,14 +45,14 @@ const leadWebhook: string = meta.lead_webhook ?? '';
           <table class="min-w-full divide-y divide-slate-200 text-sm">
             <thead class="bg-slate-100">
               <tr>
-                {columns.map((col) => (
+                {columns.map((col, idx) => (
                   <th
                     scope="col"
                     class="cursor-pointer select-none px-4 py-3 text-left font-semibold text-slate-700 hover:bg-slate-200"
-                    @click={`sortBy('${col}')`}
+                    @click={`sortBy(columns[${idx}])`}
                   >
                     <span>{col}</span>
-                    <span class="text-indigo-500" x-show={`sortKey === '${col}'`} x-text="asc ? '▲' : '▼'"></span>
+                    <span class="text-indigo-500" x-show={`sortKey === columns[${idx}]`} x-text="asc ? '▲' : '▼'"></span>
                   </th>
                 ))}
               </tr>
@@ -60,8 +60,8 @@ const leadWebhook: string = meta.lead_webhook ?? '';
             <tbody class="divide-y divide-slate-100">
               <template x-for="(row, i) in filtered()" :key="i">
                 <tr class="hover:bg-slate-50">
-                  {columns.map((col) => (
-                    <td class="px-4 py-3 text-slate-700" x-text={`row['${col}']`}></td>
+                  {columns.map((col, idx) => (
+                    <td class="px-4 py-3 text-slate-700" x-text={`row[columns[${idx}]]`}></td>
                   ))}
                 </tr>
               </template>
@@ -106,6 +106,7 @@ const leadWebhook: string = meta.lead_webhook ?? '';
           sortKey: columns[0] ?? '',
           asc: true,
           rows: rows,
+          columns: columns,
           init() {},
           sortBy(key) {
             if (this.sortKey === key) {

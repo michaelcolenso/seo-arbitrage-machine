@@ -106,11 +106,16 @@ class SiteCompiler:
             )
 
         niche_id = getattr(opportunity, "niche_id", None) or f"evaluation-{evaluation_id}"
-        slug = _slugify(niche_id)
-        site_id = self._create_site_generation(evaluation, slug)
+        # The evaluation id keeps the build dir unique so two approved evaluations
+        # sharing a niche (e.g. a rerun or a directory-vs-calculator experiment)
+        # never overwrite each other's artifacts.
+        build_name = f"{_slugify(niche_id)}-e{evaluation_id}"
+        site_id = self._create_site_generation(evaluation)
 
         try:
-            row_count, build_path = self._hydrate(evaluation, opportunity, dataset_path, slug)
+            row_count, build_path = self._hydrate(
+                evaluation, opportunity, dataset_path, build_name
+            )
             built = self._maybe_build(build_path) if run_build else False
             self._mark_site(site_id, JobStatus.COMPLETED, build_path=str(build_path))
             log_event(
@@ -160,7 +165,7 @@ class SiteCompiler:
         evaluation: Evaluation,
         opportunity: ArbitrageOpportunity | None,
         dataset_path: str | Path,
-        slug: str,
+        build_name: str,
     ) -> tuple[int, Path]:
         """Copy the template and write the data-hydration layer; return (rows, path)."""
         dataset = Path(dataset_path).expanduser()
@@ -184,7 +189,7 @@ class SiteCompiler:
             raise FileNotFoundError(f"template not found: {template_dir}")
 
         build_root = self.settings.data_dir / "builds"  # type: ignore[operator]
-        build_dir = build_root / slug
+        build_dir = build_root / build_name
         if build_dir.exists():
             shutil.rmtree(build_dir)
         build_dir.parent.mkdir(parents=True, exist_ok=True)
@@ -238,7 +243,7 @@ class SiteCompiler:
                 opportunity = session.get(ArbitrageOpportunity, evaluation.opportunity_id)
             return evaluation, opportunity
 
-    def _create_site_generation(self, evaluation: Evaluation, slug: str) -> int:
+    def _create_site_generation(self, evaluation: Evaluation) -> int:
         with session_scope(self.settings) as session:
             site = SiteGeneration(
                 evaluation_id=evaluation.id,

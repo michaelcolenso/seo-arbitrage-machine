@@ -8,8 +8,9 @@ from pathlib import Path
 import pytest
 from dsf_core.config import reload_settings
 from dsf_engine.duckdb_engine import DuckDBBroker, DuckDBError, reader_for
-from dsf_engine.models import Deployment, JobStatus, ScoutJob
-from dsf_engine.sqlite_engine import init_db, session_scope, table_counts
+from dsf_engine.models import Deployment, JobStatus, ScoutJob, SiteGeneration
+from dsf_engine.sqlite_engine import get_engine, init_db, session_scope, table_counts
+from sqlalchemy import inspect, text
 
 
 def test_init_db_creates_store(isolated_env: Path) -> None:
@@ -19,6 +20,36 @@ def test_init_db_creates_store(isolated_env: Path) -> None:
     counts = table_counts(settings)
     assert counts["scout_jobs"] == 0
     assert "deployments" in counts
+
+
+def test_additive_migration_adds_missing_columns(isolated_env: Path) -> None:
+    """A legacy table missing newer columns is reconciled by init_db()."""
+    settings = reload_settings()
+    engine = get_engine(settings)
+    # Simulate an old ledger: a site_generations table predating evaluation_id.
+    with engine.begin() as connection:
+        connection.execute(text("DROP TABLE IF EXISTS site_generations"))
+        connection.execute(
+            text("CREATE TABLE site_generations (id INTEGER PRIMARY KEY, template_type VARCHAR)")
+        )
+    before = {c["name"] for c in inspect(engine).get_columns("site_generations")}
+    assert "evaluation_id" not in before
+
+    init_db(settings)  # should ALTER TABLE ADD COLUMN the missing fields
+
+    after = {c["name"] for c in inspect(engine).get_columns("site_generations")}
+    assert "evaluation_id" in after
+    assert {"status", "build_path", "log_trace"} <= after
+
+    # The upgraded table is now writable through the ORM.
+    with session_scope(settings) as session:
+        site = SiteGeneration(evaluation_id=7, status=JobStatus.PENDING)
+        session.add(site)
+        session.flush()
+        site_id = site.id
+    with session_scope(settings) as session:
+        fetched = session.get(SiteGeneration, site_id)
+    assert fetched is not None and fetched.evaluation_id == 7
 
 
 def test_scout_job_roundtrip(isolated_env: Path) -> None:
