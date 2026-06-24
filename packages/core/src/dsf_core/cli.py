@@ -40,6 +40,15 @@ def _mount_engine_commands() -> None:
     app.add_typer(db_app, name="db")
 
 
+def _mount_scout_commands() -> None:
+    """Lazily attach the scouting (`scout`) command group from the scout package."""
+    try:
+        from dsf_scout.cli import scout_app
+    except ModuleNotFoundError:  # scout not installed (core used standalone)
+        return
+    app.add_typer(scout_app, name="scout")
+
+
 @app.callback()
 def _main() -> None:
     """Initialise logging before any command runs."""
@@ -124,8 +133,9 @@ def agent_ping(
         raise typer.Exit(code=1)
 
 
-# Attach storage commands at import time so they appear in `--help`.
+# Attach storage and scouting commands at import time so they appear in `--help`.
 _mount_engine_commands()
+_mount_scout_commands()
 
 
 if __name__ == "__main__":  # pragma: no cover

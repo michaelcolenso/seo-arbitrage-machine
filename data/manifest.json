@@ -1,0 +1,70 @@
+{
+  "description": "DataSiteForge seed manifest — compliance-first arbitrage targets (Phase 2).",
+  "sector": "high_ticket_commercial_compliance",
+  "candidates": [
+    {
+      "niche_id": "b2b_industrial_chemical_compliance",
+      "target_dataset_url": "https://catalog.data.gov/dataset/tsca-chemical-substance-inventory",
+      "primary_keywords": [
+        "chemical data sheet lookup",
+        "reach compliance requirements",
+        "tsca substance inventory"
+      ],
+      "estimated_monthly_volume": 45000,
+      "average_cpc": 14.50,
+      "keyword_difficulty": 12,
+      "data_sources_available": ["gov_registry", "osha_safety_api", "supplier_pricing_parquet"],
+      "monetization_vector": "LEAD_GEN",
+      "estimated_lead_value": 175.00,
+      "uniqueness_potential_ratio": 0.82
+    },
+    {
+      "niche_id": "osha_workplace_safety_violations",
+      "target_dataset_url": "https://catalog.data.gov/dataset/osha-inspections",
+      "primary_keywords": [
+        "osha violation lookup by company",
+        "workplace safety inspection records",
+        "osha penalty search"
+      ],
+      "estimated_monthly_volume": 33000,
+      "average_cpc": 11.20,
+      "keyword_difficulty": 15,
+      "data_sources_available": ["osha_inspections", "naics_industry_map", "penalty_history_csv"],
+      "monetization_vector": "LEAD_GEN",
+      "estimated_lead_value": 140.00,
+      "uniqueness_potential_ratio": 0.78
+    },
+    {
+      "niche_id": "faa_commercial_drone_clearances",
+      "target_dataset_url": "https://catalog.data.gov/dataset/faa-uas-authorizations",
+      "primary_keywords": [
+        "commercial drone airspace authorization",
+        "faa part 107 waiver lookup",
+        "uas clearance zone map"
+      ],
+      "estimated_monthly_volume": 18500,
+      "average_cpc": 9.80,
+      "keyword_difficulty": 18,
+      "data_sources_available": ["faa_uas_grid", "airspace_class_api", "operator_registry"],
+      "monetization_vector": "HIGH_TICKET_AFFILIATE",
+      "estimated_lead_value": 0.00,
+      "uniqueness_potential_ratio": 0.71
+    },
+    {
+      "niche_id": "fda_facility_enforcement_actions",
+      "target_dataset_url": "https://catalog.data.gov/dataset/fda-enforcement-reports",
+      "primary_keywords": [
+        "fda warning letter lookup",
+        "facility inspection 483 search",
+        "fda recall enforcement records"
+      ],
+      "estimated_monthly_volume": 27000,
+      "average_cpc": 12.40,
+      "keyword_difficulty": 21,
+      "data_sources_available": ["fda_enforcement", "facility_registry", "recall_history_json"],
+      "monetization_vector": "LEAD_GEN",
+      "estimated_lead_value": 160.00,
+      "uniqueness_potential_ratio": 0.80
+    }
+  ]
+}
