@@ -77,7 +77,11 @@ def test_compile_hydrates_directory_site(isolated_env: Path) -> None:
 
     build_dir = Path(report.build_path)
     assert build_dir.is_dir()
-    assert build_dir.name == f"{_slugify('b2b_industrial_chemical_compliance')}-e{evaluation_id}"
+    expected = (
+        f"{_slugify('b2b_industrial_chemical_compliance')}"
+        f"-e{evaluation_id}-s{report.site_generation_id}"
+    )
+    assert build_dir.name == expected
 
     rows = json.loads((build_dir / "src" / "data" / "rows.json").read_text())
     meta = json.loads((build_dir / "src" / "data" / "meta.json").read_text())
@@ -185,6 +189,22 @@ def test_compile_list_runs_migration_on_stale_ledger(isolated_env: Path) -> None
     assert "evaluation_id" in {
         c["name"] for c in inspect(engine).get_columns("site_generations")
     }
+
+
+def test_recompiling_same_evaluation_uses_distinct_build_dirs(isolated_env: Path) -> None:
+    """A retry of the same evaluation must not clobber the prior generation's dir."""
+    settings = reload_settings()
+    evaluation_id = _seed_evaluation(settings)
+    dataset = _write_dataset(isolated_env)
+
+    compiler = SiteCompiler(settings=settings)
+    first = compiler.compile(evaluation_id, dataset)
+    second = compiler.compile(evaluation_id, dataset)
+
+    assert first.status == "COMPLETED" and second.status == "COMPLETED"
+    assert first.site_generation_id != second.site_generation_id
+    assert first.build_path != second.build_path
+    assert Path(first.build_path).is_dir() and Path(second.build_path).is_dir()
 
 
 def test_compile_same_niche_uses_distinct_build_dirs(isolated_env: Path) -> None:

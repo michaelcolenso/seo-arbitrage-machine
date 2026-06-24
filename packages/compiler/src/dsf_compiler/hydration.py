@@ -13,6 +13,7 @@ can construct lightweight stand-ins or real (unsaved) SQLModel instances.
 from __future__ import annotations
 
 import json
+import math
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Any, Protocol
@@ -41,10 +42,19 @@ def _enum_value(value: Any) -> Any:
 
 
 def _sanitise(value: Any) -> Any:
-    """Coerce a DuckDB cell into a JSON-serialisable scalar."""
-    if value is None or isinstance(value, (str, int, float, bool)):
+    """Coerce a DuckDB cell into a JSON-serialisable scalar.
+
+    Non-finite floats (``NaN`` / ``±Infinity``) are coerced to ``None``: with
+    ``json.dumps``'s default they would serialise to bare ``NaN``/``Infinity``
+    tokens, which are invalid JSON and break Astro's JSON import at build time.
+    """
+    if isinstance(value, bool) or value is None or isinstance(value, (str, int)):
         return value
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
     if isinstance(value, Decimal):
+        if not value.is_finite():
+            return None
         # Preserve integers as ints, otherwise fall back to float.
         return int(value) if value == value.to_integral_value() else float(value)
     if isinstance(value, (datetime, date)):

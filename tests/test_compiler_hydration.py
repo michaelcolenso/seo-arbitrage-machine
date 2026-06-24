@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import date
 from decimal import Decimal
 
@@ -29,6 +30,24 @@ def test_build_rows_payload_limits_and_sanitises() -> None:
     assert out[0]["d"] == "2026-01-02"  # date -> ISO string
     assert out[0]["n"] == 3.5  # non-integral Decimal -> float
     assert out[0]["x"] == 4 and isinstance(out[0]["x"], int)  # integral Decimal -> int
+
+
+def test_build_rows_payload_nulls_non_finite_floats() -> None:
+    rows = [{"a": float("nan"), "b": float("inf"), "c": float("-inf"), "d": 1.5}]
+    out = build_rows_payload(rows)
+    assert out[0]["a"] is None
+    assert out[0]["b"] is None
+    assert out[0]["c"] is None
+    assert out[0]["d"] == 1.5
+    # The result is strict-JSON serialisable (no NaN/Infinity tokens).
+    text = json.dumps(out, allow_nan=False)
+    assert "NaN" not in text and "Infinity" not in text
+
+
+def test_build_rows_payload_nulls_non_finite_decimals() -> None:
+    out = build_rows_payload([{"x": Decimal("NaN"), "y": Decimal("2.5")}])
+    assert out[0]["x"] is None
+    assert out[0]["y"] == 2.5
 
 
 def test_build_calculator_block_picks_numeric_columns() -> None:

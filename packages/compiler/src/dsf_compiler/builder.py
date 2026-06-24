@@ -106,11 +106,11 @@ class SiteCompiler:
             )
 
         niche_id = getattr(opportunity, "niche_id", None) or f"evaluation-{evaluation_id}"
-        # The evaluation id keeps the build dir unique so two approved evaluations
-        # sharing a niche (e.g. a rerun or a directory-vs-calculator experiment)
-        # never overwrite each other's artifacts.
-        build_name = f"{_slugify(niche_id)}-e{evaluation_id}"
         site_id = self._create_site_generation(evaluation)
+        # The site-generation id makes every build dir unique, so re-compiling the
+        # same evaluation (a retry, or a fixed dataset) never overwrites a prior
+        # generation's artifacts that an earlier row / deployment still points at.
+        build_name = f"{_slugify(niche_id)}-e{evaluation_id}-s{site_id}"
 
         try:
             row_count, build_path = self._hydrate(
@@ -227,11 +227,13 @@ class SiteCompiler:
 
         data_dir = build_dir / "src" / "data"
         data_dir.mkdir(parents=True, exist_ok=True)
+        # allow_nan=False guarantees we never emit invalid JSON (NaN/Infinity);
+        # _sanitise already nulls non-finite floats, this is the belt-and-suspenders.
         (data_dir / "rows.json").write_text(
-            json.dumps(rows_payload, indent=2), encoding="utf-8"
+            json.dumps(rows_payload, indent=2, allow_nan=False), encoding="utf-8"
         )
         (data_dir / "meta.json").write_text(
-            json.dumps(meta_payload, indent=2), encoding="utf-8"
+            json.dumps(meta_payload, indent=2, allow_nan=False), encoding="utf-8"
         )
         return len(rows_payload), build_dir
 
