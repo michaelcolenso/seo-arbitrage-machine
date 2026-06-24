@@ -117,6 +117,36 @@ class SiteCompiler:
                 evaluation, opportunity, dataset_path, build_name
             )
             built = self._maybe_build(build_path) if run_build else False
+            if run_build and not built:
+                # A requested build that produced no dist/ must not look COMPLETED:
+                # downstream deploy would pick up a generation with no artifacts.
+                message = "requested build failed: npm install/build produced no dist/"
+                self._mark_site(
+                    site_id,
+                    JobStatus.FAILED,
+                    build_path=str(build_path),
+                    log_trace=message,
+                )
+                log_event(
+                    _log,
+                    "compiler.build.unsuccessful",
+                    level=40,
+                    evaluation_id=evaluation_id,
+                    site_generation_id=site_id,
+                    build_path=str(build_path),
+                )
+                return CompileReport(
+                    status="AGENT_ACTION_REQUIRED",
+                    evaluation_id=evaluation_id,
+                    site_generation_id=site_id,
+                    niche_id=niche_id,
+                    template_type=evaluation.template_type.value,
+                    build_path=str(build_path),
+                    row_count=row_count,
+                    built=False,
+                    error_type="BuildFailed",
+                    message=message,
+                )
             self._mark_site(site_id, JobStatus.COMPLETED, build_path=str(build_path))
             log_event(
                 _log,

@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 from dsf_compiler.builder import SiteCompiler, _slugify
+from dsf_compiler.cli import compile_list
 from dsf_core.config import reload_settings
 from dsf_engine.models import (
     ArbitrageOpportunity,
@@ -17,7 +18,8 @@ from dsf_engine.models import (
     SiteGeneration,
     TemplateType,
 )
-from dsf_engine.sqlite_engine import init_db, session_scope
+from dsf_engine.sqlite_engine import get_engine, init_db, session_scope
+from sqlalchemy import inspect, text
 from sqlmodel import select
 
 
@@ -143,6 +145,46 @@ def test_compile_unknown_evaluation(isolated_env: Path) -> None:
     report = SiteCompiler(settings=settings).compile(999, isolated_env / "x.csv")
     assert report.status == "AGENT_ACTION_REQUIRED"
     assert report.error_type == "EvaluationNotFound"
+
+
+def test_failed_requested_build_fails_generation(isolated_env: Path, monkeypatch) -> None:
+    """--build that produces no dist/ must fail the generation, not COMPLETE it."""
+    settings = reload_settings()
+    evaluation_id = _seed_evaluation(settings)
+    dataset = _write_dataset(isolated_env)
+
+    # Simulate npm install / astro build failing (returns no dist/).
+    monkeypatch.setattr(SiteCompiler, "_maybe_build", lambda self, build_dir: False)
+    report = SiteCompiler(settings=settings).compile(evaluation_id, dataset, run_build=True)
+
+    assert report.status == "AGENT_ACTION_REQUIRED"
+    assert report.error_type == "BuildFailed"
+    assert report.built is False
+    with session_scope(settings) as session:
+        site = session.exec(select(SiteGeneration)).one()
+    assert site.status == JobStatus.FAILED
+
+
+def test_compile_list_runs_migration_on_stale_ledger(isolated_env: Path) -> None:
+    """`compile list` must migrate a pre-evaluation_id ledger before querying."""
+    settings = reload_settings()
+    engine = get_engine(settings)
+    # Legacy site_generations table without the newer mapped columns.
+    with engine.begin() as connection:
+        connection.execute(text("DROP TABLE IF EXISTS site_generations"))
+        connection.execute(
+            text("CREATE TABLE site_generations (id INTEGER PRIMARY KEY, template_type VARCHAR)")
+        )
+    assert "evaluation_id" not in {
+        c["name"] for c in inspect(engine).get_columns("site_generations")
+    }
+
+    # Should not raise "no such column"; it migrates, then finds no rows.
+    compile_list(limit=20)
+
+    assert "evaluation_id" in {
+        c["name"] for c in inspect(engine).get_columns("site_generations")
+    }
 
 
 def test_compile_same_niche_uses_distinct_build_dirs(isolated_env: Path) -> None:

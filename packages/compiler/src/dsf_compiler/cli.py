@@ -12,7 +12,7 @@ import typer
 from dsf_core.config import get_settings
 from dsf_core.telemetry import get_console
 from dsf_engine.models import SiteGeneration
-from dsf_engine.sqlite_engine import session_scope
+from dsf_engine.sqlite_engine import init_db, session_scope
 from rich.panel import Panel
 from rich.table import Table
 from sqlmodel import select
@@ -69,6 +69,10 @@ def compile_list(
             "[yellow]Ledger not initialised.[/yellow] Run [bold]seo-platform db init[/bold]."
         )
         raise typer.Exit(code=1)
+
+    # Apply any pending additive migrations before querying mapped columns, so an
+    # upgraded ledger doesn't raise "no such column" on newer fields.
+    init_db(settings)
 
     with session_scope(settings) as session:
         statement = (
