@@ -1,0 +1,52 @@
+# DataSiteForge local infrastructure.
+#
+# The core storage engines (SQLite + DuckDB) are embedded and require no
+# services. This file provisions the optional supporting infrastructure used by
+# later phases: a privacy-friendly analytics instance (Plausible) for telemetry
+# (Phase 6/7) and an outbound HTTP proxy for the Scout (Phase 2). They are
+# defined here for convenience and are commented out until those phases land.
+#
+# Bring up only what you need, e.g.:  docker compose up -d plausible_db plausible
+services:
+  # --- Plausible Analytics (telemetry source for Phase 6/7) ----------------
+  # plausible_db:
+  #   image: postgres:16-alpine
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_PASSWORD: plausible
+  #     POSTGRES_USER: plausible
+  #     POSTGRES_DB: plausible
+  #   volumes:
+  #     - plausible_pgdata:/var/lib/postgresql/data
+  #
+  # plausible_events_db:
+  #   image: clickhouse/clickhouse-server:24.3-alpine
+  #   restart: unless-stopped
+  #   volumes:
+  #     - plausible_chdata:/var/lib/clickhouse
+  #
+  # plausible:
+  #   image: ghcr.io/plausible/community-edition:v2.1.4
+  #   restart: unless-stopped
+  #   command: sh -c "/entrypoint.sh db migrate && /entrypoint.sh run"
+  #   depends_on:
+  #     - plausible_db
+  #     - plausible_events_db
+  #   ports:
+  #     - "8000:8000"
+  #   environment:
+  #     BASE_URL: http://localhost:8000
+  #     SECRET_KEY_BASE: change-me-to-a-64-byte-random-string-change-me-to-a-64-byte
+  #     DATABASE_URL: postgres://plausible:plausible@plausible_db:5432/plausible
+  #     CLICKHOUSE_DATABASE_URL: http://plausible_events_db:8123/plausible_events_db
+
+  # --- Outbound scraper proxy (for Phase 2 Scout) --------------------------
+  # scraper_proxy:
+  #   image: ghcr.io/mubeng/mubeng:latest
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8089:8089"
+
+# volumes:
+#   plausible_pgdata:
+#   plausible_chdata:

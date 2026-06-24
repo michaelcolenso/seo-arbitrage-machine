@@ -1,0 +1,15 @@
+{
+  "monetization_pattern": "local_lead_generation",
+  "architectural_layout": "directory",
+  "confidence": 0.81,
+  "seo_keyword_layout": {
+    "route_pattern": "/{city}/{category}",
+    "high_volume_columns": ["city", "category"],
+    "sample_routes": [
+      "/austin/solar-installers",
+      "/denver/solar-installers"
+    ]
+  },
+  "rationale": "Geographic + categorical columns support high-intent local directory routing.",
+  "notes": "Deterministic fixture returned by the Agent Bridge in mock mode."
+}

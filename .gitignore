@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Virtual environments
+.venv/
+venv/
+
+# Environment / secrets
+.env
+.env.local
+
+# Application data (state stores are generated at runtime)
+data/*.sqlite
+data/*.sqlite-journal
+data/*.sqlite-wal
+data/*.sqlite-shm
+data/*.duckdb
+data/*.duckdb.wal
+data/tmp/
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/

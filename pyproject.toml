@@ -1,0 +1,40 @@
+[project]
+name = "datasiteforge"
+version = "0.1.0"
+description = "DataSiteForge — agent-native engine that turns public datasets into zero-cost programmatic data-utility sites."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "DataSiteForge" }]
+dependencies = [
+    "datasiteforge-core",
+    "datasiteforge-engine",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.uv.workspace]
+members = ["packages/*", "apps/*"]
+
+[tool.uv.sources]
+datasiteforge-core = { workspace = true }
+datasiteforge-engine = { workspace = true }
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -q"
+pythonpath = ["."]
+
+# The root package itself is a metapackage that only aggregates the workspace
+# members; there is no importable top-level module, so we disable build of it.
+[tool.uv]
+package = false

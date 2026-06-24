@@ -1,0 +1,15 @@
+{
+  "dataset": "mock-open-data",
+  "confidence": 0.92,
+  "schema": {
+    "fields": [
+      { "name": "id", "type": "integer", "nullable": false, "role": "identifier" },
+      { "name": "name", "type": "string", "nullable": false, "role": "title" },
+      { "name": "category", "type": "string", "nullable": true, "role": "facet" },
+      { "name": "city", "type": "string", "nullable": true, "role": "geo" },
+      { "name": "rating", "type": "float", "nullable": true, "role": "metric" }
+    ],
+    "primary_key": "id"
+  },
+  "notes": "Deterministic fixture returned by the Agent Bridge in mock mode."
+}
