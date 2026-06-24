@@ -36,6 +36,14 @@ class TemplateType(str, enum.Enum):
     CALCULATOR = "calculator"
 
 
+class MonetizationVector(str, enum.Enum):
+    """How a discovered opportunity is intended to generate revenue."""
+
+    LEAD_GEN = "LEAD_GEN"
+    HIGH_TICKET_AFFILIATE = "HIGH_TICKET_AFFILIATE"
+    PER_CLICK = "PER_CLICK"
+
+
 class ScoutJob(SQLModel, table=True):
     """A data-harvesting run seeded by a target niche."""
 
@@ -108,6 +116,35 @@ class Deployment(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=utcnow)
 
 
+class ArbitrageOpportunity(SQLModel, table=True):
+    """A scored arbitrage candidate produced by the Scout's miner.
+
+    This is the durable ledger record; the Scout's in-memory scoring model lives
+    in ``dsf_scout.models`` and serialises into this table.  List-valued fields
+    (keywords, data sources) are stored as JSON strings for portability.
+    """
+
+    __tablename__ = "arbitrage_opportunities"
+
+    id: int | None = Field(default=None, primary_key=True)
+    scout_job_id: int | None = Field(default=None, foreign_key="scout_jobs.id", index=True)
+    niche_id: str = Field(index=True)
+    target_dataset_url: str
+    primary_keywords: str = Field(default="[]", description="JSON-encoded list of keywords.")
+    estimated_monthly_volume: int = Field(default=0)
+    average_cpc: float = Field(default=0.0, description="Average cost-per-click in USD.")
+    keyword_difficulty: int = Field(default=0, description="Ahrefs-style KD, 0-100.")
+    data_sources_available: str = Field(default="[]", description="JSON-encoded source list.")
+    monetization_vector: MonetizationVector = Field(default=MonetizationVector.LEAD_GEN)
+    estimated_lead_value: float = Field(default=0.0)
+    uniqueness_potential_ratio: float = Field(default=0.0)
+    arbitrage_score: float = Field(default=0.0, index=True)
+    source: str | None = Field(default=None, description="Candidate provider id.")
+    status: JobStatus = Field(default=JobStatus.PENDING, index=True)
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
+
+
 class AnalyticsLog(SQLModel, table=True):
     """A single rolled-up analytics observation for a deployed page."""
 
@@ -128,5 +165,6 @@ ALL_TABLES: tuple[type[SQLModel], ...] = (
     DatasetProfile,
     SiteGeneration,
     Deployment,
+    ArbitrageOpportunity,
     AnalyticsLog,
 )

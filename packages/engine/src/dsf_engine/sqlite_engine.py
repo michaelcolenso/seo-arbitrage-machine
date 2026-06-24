@@ -65,9 +65,14 @@ def init_db(settings: Settings | None = None) -> Engine:
 
 @contextmanager
 def session_scope(settings: Settings | None = None) -> Iterator[Session]:
-    """Provide a transactional :class:`Session`, rolling back on any exception."""
+    """Provide a transactional :class:`Session`, rolling back on any exception.
+
+    ``expire_on_commit`` is disabled so that committed instances remain readable
+    after the ``with`` block closes — callers routinely inspect ids and fields of
+    just-persisted rows, and the orchestration code returns them in reflections.
+    """
     engine = get_engine(settings)
-    session = Session(engine)
+    session = Session(engine, expire_on_commit=False)
     try:
         yield session
         session.commit()
