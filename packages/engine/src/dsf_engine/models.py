@@ -44,6 +44,21 @@ class MonetizationVector(str, enum.Enum):
     PER_CLICK = "PER_CLICK"
 
 
+class MonetizationPattern(str, enum.Enum):
+    """The concrete monetisation pattern chosen by the Evaluator (Phase 3)."""
+
+    LOCAL_LEAD_GENERATION = "local_lead_generation"
+    CONTEXTUAL_AFFILIATION = "contextual_affiliation"
+    PREMIUM_CPC = "premium_cpc"
+
+
+class EvaluationVerdict(str, enum.Enum):
+    """Whether an evaluated opportunity is cleared to be built into a site."""
+
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
 class ScoutJob(SQLModel, table=True):
     """A data-harvesting run seeded by a target niche."""
 
@@ -145,6 +160,34 @@ class ArbitrageOpportunity(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=utcnow)
 
 
+class Evaluation(SQLModel, table=True):
+    """The Evaluator's verified financial/structural verdict for an opportunity.
+
+    Produced by ``dsf_engine.evaluator`` from an Agent Bridge financial-evaluation
+    loop.  Captures the chosen monetisation pattern, the Astro template mapping,
+    and the SEO routing layout.  Phase 4 reads ``APPROVED`` evaluations to build.
+    """
+
+    __tablename__ = "evaluations"
+
+    id: int | None = Field(default=None, primary_key=True)
+    opportunity_id: int | None = Field(
+        default=None, foreign_key="arbitrage_opportunities.id", index=True
+    )
+    monetization_pattern: MonetizationPattern = Field(
+        default=MonetizationPattern.LOCAL_LEAD_GENERATION
+    )
+    template_type: TemplateType = Field(default=TemplateType.DIRECTORY)
+    seo_route_pattern: str | None = Field(default=None)
+    seo_high_volume_columns: str = Field(default="[]", description="JSON-encoded column list.")
+    seo_sample_routes: str = Field(default="[]", description="JSON-encoded sample routes.")
+    confidence: float = Field(default=0.0)
+    verdict: EvaluationVerdict = Field(default=EvaluationVerdict.REJECTED, index=True)
+    rationale: str | None = Field(default=None)
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
+
+
 class AnalyticsLog(SQLModel, table=True):
     """A single rolled-up analytics observation for a deployed page."""
 
@@ -166,5 +209,6 @@ ALL_TABLES: tuple[type[SQLModel], ...] = (
     SiteGeneration,
     Deployment,
     ArbitrageOpportunity,
+    Evaluation,
     AnalyticsLog,
 )

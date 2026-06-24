@@ -32,12 +32,14 @@ app.add_typer(agent_app, name="agent")
 
 
 def _mount_engine_commands() -> None:
-    """Lazily attach the storage (`db`) command group from the engine package."""
+    """Lazily attach the engine command groups (`db`, `evaluate`)."""
     try:
         from dsf_engine.cli import db_app
+        from dsf_engine.eval_cli import eval_app
     except ModuleNotFoundError:  # engine not installed (core used standalone)
         return
     app.add_typer(db_app, name="db")
+    app.add_typer(eval_app, name="evaluate")
 
 
 def _mount_scout_commands() -> None:
