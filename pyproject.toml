@@ -10,6 +10,7 @@ dependencies = [
     "datasiteforge-engine",
     "datasiteforge-scout",
     "datasiteforge-compiler",
+    "datasiteforge-deployer",
 ]
 
 [dependency-groups]
@@ -25,6 +26,7 @@ datasiteforge-core = { workspace = true }
 datasiteforge-engine = { workspace = true }
 datasiteforge-scout = { workspace = true }
 datasiteforge-compiler = { workspace = true }
+datasiteforge-deployer = { workspace = true }
 
 [tool.ruff]
 line-length = 100
