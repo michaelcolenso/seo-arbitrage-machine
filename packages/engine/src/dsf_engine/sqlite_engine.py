@@ -14,7 +14,7 @@ from contextlib import contextmanager
 
 from dsf_core.config import Settings, get_settings
 from dsf_core.telemetry import get_logger, log_event
-from sqlalchemy import func
+from sqlalchemy import func, inspect, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine, select
@@ -54,13 +54,56 @@ def get_engine(settings: Settings | None = None) -> Engine:
 
 
 def init_db(settings: Settings | None = None) -> Engine:
-    """Create the data directory and all tables; return the bound engine."""
+    """Create the data directory and all tables; return the bound engine.
+
+    ``create_all`` creates any missing *tables* but never alters existing ones,
+    so an older ledger is then reconciled by :func:`_apply_additive_migrations`,
+    which adds any *columns* that newer models introduced.
+    """
     settings = settings or get_settings()
     settings.ensure_directories()
     engine = get_engine(settings)
     SQLModel.metadata.create_all(engine)
+    _apply_additive_migrations(engine)
     log_event(_log, "sqlite.init", url=settings.sqlite_url, tables=len(ALL_TABLES))
     return engine
+
+
+def _apply_additive_migrations(engine: Engine) -> None:
+    """Add model columns missing from pre-existing tables (additive, idempotent).
+
+    ``SQLModel.metadata.create_all`` does not ``ALTER`` existing tables, so a
+    ledger created before a new column was added would break on the first
+    insert/select of that column.  For each already-existing table we compare the
+    live columns to the model's columns and ``ADD COLUMN`` whatever is missing.
+
+    Columns are always added *nullable* (constraints are intentionally dropped):
+    SQLite forbids adding a ``NOT NULL`` column without a constant default, and
+    the ORM populates these fields on write anyway, so a looser DB-level
+    nullability is a safe upgrade shim.
+    """
+    inspector = inspect(engine)
+    existing_tables = set(inspector.get_table_names())
+    dialect = engine.dialect
+    with engine.begin() as connection:
+        for model in ALL_TABLES:
+            table = model.__table__  # type: ignore[attr-defined]
+            if table.name not in existing_tables:
+                continue  # brand-new table — create_all already built it in full
+            live_columns = {col["name"] for col in inspector.get_columns(table.name)}
+            for column in table.columns:
+                if column.name in live_columns:
+                    continue
+                column_type = column.type.compile(dialect=dialect)
+                connection.execute(
+                    text(f'ALTER TABLE "{table.name}" ADD COLUMN "{column.name}" {column_type}')
+                )
+                log_event(
+                    _log,
+                    "sqlite.migrate.add_column",
+                    table=table.name,
+                    column=column.name,
+                )
 
 
 @contextmanager

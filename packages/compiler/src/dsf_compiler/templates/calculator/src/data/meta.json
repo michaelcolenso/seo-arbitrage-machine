@@ -1,0 +1,25 @@
+{
+  "niche_id": "sample_calculator",
+  "title": "Sample Parametric Calculator",
+  "description": "Placeholder calculator config. Replaced by the DataSiteForge compiler.",
+  "template_type": "calculator",
+  "monetization_pattern": "premium_cpc",
+  "seo": {
+    "route_pattern": "/{category}",
+    "high_volume_columns": ["category"],
+    "sample_routes": []
+  },
+  "columns": ["units", "risk_factor"],
+  "lead_gen": false,
+  "lead_webhook": "",
+  "confidence": 0.0,
+  "calculator": {
+    "base": 0,
+    "result_label": "Estimated Annual Cost ($)",
+    "inputs": [
+      { "key": "units", "label": "Number Of Units", "default": 10, "weight": 120 },
+      { "key": "risk_factor", "label": "Risk Factor", "default": 3, "weight": 450 }
+    ]
+  },
+  "generated_at": "1970-01-01T00:00:00+00:00"
+}

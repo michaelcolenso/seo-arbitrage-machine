@@ -1,0 +1,5 @@
+[
+  { "company": "Acme Chemical Co", "city": "Austin", "category": "chemical", "violations": 3 },
+  { "company": "Globex HVAC", "city": "Denver", "category": "hvac", "violations": 1 },
+  { "company": "Initech Compliance", "city": "Austin", "category": "chemical", "violations": 0 }
+]

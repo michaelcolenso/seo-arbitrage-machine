@@ -1,0 +1,17 @@
+{
+  "niche_id": "sample_directory",
+  "title": "Sample Data Directory",
+  "description": "Placeholder directory dataset. Replaced by the DataSiteForge compiler.",
+  "template_type": "directory",
+  "monetization_pattern": "local_lead_generation",
+  "seo": {
+    "route_pattern": "/{city}/{category}",
+    "high_volume_columns": ["city", "category"],
+    "sample_routes": []
+  },
+  "columns": ["company", "city", "category", "violations"],
+  "lead_gen": true,
+  "lead_webhook": "",
+  "confidence": 0.0,
+  "generated_at": "1970-01-01T00:00:00+00:00"
+}

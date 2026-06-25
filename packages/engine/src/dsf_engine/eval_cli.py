@@ -14,7 +14,7 @@ from sqlmodel import select
 
 from .evaluator import Evaluator
 from .models import ArbitrageOpportunity, Evaluation
-from .sqlite_engine import session_scope
+from .sqlite_engine import init_db, session_scope
 
 eval_app = typer.Typer(
     name="evaluate",
@@ -83,6 +83,9 @@ def evaluate_list(
             "[yellow]Ledger not initialised.[/yellow] Run [bold]seo-platform db init[/bold]."
         )
         raise typer.Exit(code=1)
+
+    # Apply pending additive migrations before querying mapped columns.
+    init_db(settings)
 
     with session_scope(settings) as session:
         statement = (

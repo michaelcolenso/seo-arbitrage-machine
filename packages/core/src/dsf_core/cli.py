@@ -51,6 +51,15 @@ def _mount_scout_commands() -> None:
     app.add_typer(scout_app, name="scout")
 
 
+def _mount_compiler_commands() -> None:
+    """Lazily attach the compilation (`compile`) command group."""
+    try:
+        from dsf_compiler.cli import compile_app
+    except ModuleNotFoundError:  # compiler not installed (core used standalone)
+        return
+    app.add_typer(compile_app, name="compile")
+
+
 @app.callback()
 def _main() -> None:
     """Initialise logging before any command runs."""
@@ -135,9 +144,11 @@ def agent_ping(
         raise typer.Exit(code=1)
 
 
-# Attach storage and scouting commands at import time so they appear in `--help`.
+# Attach storage, scouting, and compilation commands at import time so they
+# appear in `--help`.
 _mount_engine_commands()
 _mount_scout_commands()
+_mount_compiler_commands()
 
 
 if __name__ == "__main__":  # pragma: no cover

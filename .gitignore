@@ -25,6 +25,12 @@ data/*.sqlite-shm
 data/*.duckdb
 data/*.duckdb.wal
 data/tmp/
+data/builds/
+
+# Node / Astro build artifacts (templates are sources; builds are generated)
+node_modules/
+dist/
+.astro/
 
 # OS / editor
 .DS_Store
