@@ -69,6 +69,15 @@ def _mount_optimizer_commands() -> None:
     app.add_typer(optimize_app, name="optimize")
 
 
+def _mount_api_commands() -> None:
+    """Lazily attach the API server (`serve`) command from the api app."""
+    try:
+        from dsf_api.cli import serve_app
+    except ModuleNotFoundError:  # api app not installed (core used standalone)
+        return
+    app.add_typer(serve_app, name="serve")
+
+
 def _mount_compiler_commands() -> None:
     """Lazily attach the compilation (`compile`) command group."""
     try:
@@ -169,6 +178,7 @@ _mount_scout_commands()
 _mount_compiler_commands()
 _mount_deployer_commands()
 _mount_optimizer_commands()
+_mount_api_commands()
 
 
 if __name__ == "__main__":  # pragma: no cover
