@@ -1,0 +1,21 @@
+[project]
+name = "datasiteforge-optimizer"
+version = "0.1.0"
+description = "DataSiteForge optimizer: traffic telemetry ingestion and automated reinforcement loops."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "datasiteforge-core",
+    "datasiteforge-engine",
+    "datasiteforge-deployer",
+    "httpx>=0.27",
+    "typer>=0.12",
+    "rich>=13.7",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dsf_optimizer"]

@@ -9,6 +9,7 @@ members = [
     "datasiteforge-core",
     "datasiteforge-deployer",
     "datasiteforge-engine",
+    "datasiteforge-optimizer",
     "datasiteforge-scout",
 ]
 
@@ -70,6 +71,7 @@ dependencies = [
     { name = "datasiteforge-core" },
     { name = "datasiteforge-deployer" },
     { name = "datasiteforge-engine" },
+    { name = "datasiteforge-optimizer" },
     { name = "datasiteforge-scout" },
 ]
 
@@ -84,6 +86,7 @@ requires-dist = [
     { name = "datasiteforge-core", editable = "packages/core" },
     { name = "datasiteforge-deployer", editable = "packages/deployer" },
     { name = "datasiteforge-engine", editable = "packages/engine" },
+    { name = "datasiteforge-optimizer", editable = "packages/optimizer" },
     { name = "datasiteforge-scout", editable = "packages/scout" },
 ]
 
@@ -171,6 +174,29 @@ requires-dist = [
     { name = "duckdb", specifier = ">=1.0" },
     { name = "rich", specifier = ">=13.7" },
     { name = "sqlmodel", specifier = ">=0.0.22" },
+    { name = "typer", specifier = ">=0.12" },
+]
+
+[[package]]
+name = "datasiteforge-optimizer"
+version = "0.1.0"
+source = { editable = "packages/optimizer" }
+dependencies = [
+    { name = "datasiteforge-core" },
+    { name = "datasiteforge-deployer" },
+    { name = "datasiteforge-engine" },
+    { name = "httpx" },
+    { name = "rich" },
+    { name = "typer" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "datasiteforge-core", editable = "packages/core" },
+    { name = "datasiteforge-deployer", editable = "packages/deployer" },
+    { name = "datasiteforge-engine", editable = "packages/engine" },
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "rich", specifier = ">=13.7" },
     { name = "typer", specifier = ">=0.12" },
 ]
 
