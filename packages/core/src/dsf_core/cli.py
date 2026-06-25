@@ -51,6 +51,15 @@ def _mount_scout_commands() -> None:
     app.add_typer(scout_app, name="scout")
 
 
+def _mount_deployer_commands() -> None:
+    """Lazily attach the deployment (`deploy`) command group from the deployer."""
+    try:
+        from dsf_deployer.cli import deploy_app
+    except ModuleNotFoundError:  # deployer not installed (core used standalone)
+        return
+    app.add_typer(deploy_app, name="deploy")
+
+
 def _mount_compiler_commands() -> None:
     """Lazily attach the compilation (`compile`) command group."""
     try:
@@ -149,6 +158,7 @@ def agent_ping(
 _mount_engine_commands()
 _mount_scout_commands()
 _mount_compiler_commands()
+_mount_deployer_commands()
 
 
 if __name__ == "__main__":  # pragma: no cover
