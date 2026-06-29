@@ -228,6 +228,31 @@ class Optimization(SQLModel, table=True):
     created_at: datetime = Field(default_factory=utcnow)
 
 
+class Job(SQLModel, table=True):
+    """A background control-plane job (Phase 8 API worker), persisted for durability.
+
+    The API submits long-running lifecycle actions to a thread-pool worker and
+    returns this job's id.  Persisting it to the ledger means job state and
+    history survive a process restart, and orphaned in-flight jobs can be
+    recovered (queued ones re-run; running ones flagged interrupted).
+
+    ``status`` uses the worker vocabulary (``queued`` / ``running`` /
+    ``succeeded`` / ``failed``); ``params`` and ``result`` are JSON strings.
+    """
+
+    __tablename__ = "jobs"
+
+    id: str = Field(primary_key=True)
+    kind: str = Field(index=True)
+    status: str = Field(default="queued", index=True)
+    params: str = Field(default="{}", description="JSON-encoded request parameters.")
+    result: str | None = Field(default=None, description="JSON-encoded handler result.")
+    error: str | None = Field(default=None)
+    created_at: datetime = Field(default_factory=utcnow, index=True)
+    started_at: datetime | None = Field(default=None)
+    finished_at: datetime | None = Field(default=None)
+
+
 # Convenience collection used by status reporting / verification helpers.
 ALL_TABLES: tuple[type[SQLModel], ...] = (
     ScoutJob,
@@ -238,4 +263,5 @@ ALL_TABLES: tuple[type[SQLModel], ...] = (
     Evaluation,
     AnalyticsLog,
     Optimization,
+    Job,
 )
