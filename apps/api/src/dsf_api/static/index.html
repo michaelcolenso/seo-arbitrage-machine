@@ -4,8 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>DataSiteForge · Operator Console</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <!-- Self-hosted assets only: the console handles the control-plane token, so
+         it must never execute third-party scripts that could exfiltrate it. -->
+    <link rel="stylesheet" href="/static/console.css" />
+    <script defer src="/static/alpine.min.js"></script>
   </head>
   <body class="bg-slate-100 text-slate-900 antialiased">
     <main class="mx-auto max-w-5xl px-4 py-8" x-data="dsfConsole()" x-init="refresh()">

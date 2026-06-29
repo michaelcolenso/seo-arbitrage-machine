@@ -142,3 +142,25 @@ def test_console_served_at_root(client) -> None:
     assert resp.status_code == 200
     assert "DataSiteForge" in resp.text
     assert "dsfConsole" in resp.text
+
+
+def test_console_uses_only_self_hosted_assets(client) -> None:
+    # The console handles the API token, so it must not load third-party scripts.
+    html = client.get("/").text
+    assert "cdn.tailwindcss.com" not in html
+    assert "unpkg.com" not in html
+    assert "/static/alpine.min.js" in html
+    assert "/static/console.css" in html
+
+
+def test_static_assets_public_even_under_auth(isolated_env: Path, monkeypatch) -> None:
+    from dsf_core.config import reload_settings
+
+    monkeypatch.setenv("DSF_API_TOKEN", "s3cret")
+    reload_settings()
+    app = create_app(inline_jobs=True)
+    with TestClient(app) as c:
+        assert c.get("/static/console.css").status_code == 200
+        asset = c.get("/static/alpine.min.js")
+        assert asset.status_code == 200
+        assert len(asset.content) > 1000

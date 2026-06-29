@@ -28,6 +28,7 @@ from dsf_engine.models import (
 from dsf_engine.sqlite_engine import init_db, session_scope
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func
 from sqlmodel import select
 
@@ -96,6 +97,10 @@ def create_app(*, inline_jobs: bool = False) -> FastAPI:
         lifespan=lifespan,
         dependencies=[Depends(require_token)],
     )
+
+    # Self-hosted console assets (CSS/JS). Mounted sub-apps bypass the global
+    # auth dependency, so these stay publicly fetchable — they hold no secrets.
+    app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
 
     # -- health & console -------------------------------------------------
 
