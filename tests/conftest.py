@@ -3,10 +3,32 @@
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    parser.addoption(
+        "--run-live",
+        action="store_true",
+        default=False,
+        help="Run @pytest.mark.live tests that hit real external services.",
+    )
+
+
+def pytest_collection_modifyitems(
+    config: pytest.Config, items: list[pytest.Item]
+) -> None:
+    """Skip live tests unless --run-live or RUN_LIVE=1 is set (e.g. in CI they skip)."""
+    if config.getoption("--run-live") or os.environ.get("RUN_LIVE") == "1":
+        return
+    skip_live = pytest.mark.skip(reason="live test; pass --run-live or set RUN_LIVE=1")
+    for item in items:
+        if "live" in item.keywords:
+            item.add_marker(skip_live)
 
 
 @pytest.fixture()
