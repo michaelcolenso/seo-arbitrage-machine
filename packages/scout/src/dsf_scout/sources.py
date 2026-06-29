@@ -24,6 +24,9 @@ from dsf_core.telemetry import get_logger, log_event
 
 _log = get_logger("scout.sources")
 
+# Polite, identifiable User-Agent for open-data portal requests.
+_USER_AGENT = "DataSiteForge/0.1 (+https://github.com/michaelcolenso/seo-arbitrage-machine)"
+
 
 class SourceError(RuntimeError):
     """Raised when a candidate source cannot produce results."""
@@ -96,6 +99,11 @@ class OpenDataSource:
     ``niche_id``, ``target_dataset_url``, and detected ``data_sources_available``
     (resource formats).  Keyword/monetisation fields are left for Agent Bridge
     enrichment downstream.
+
+    Note: ``catalog.data.gov``'s action API currently returns 404 to automated
+    clients, so pass a working ``portal_url`` (e.g. ``https://data.gov.uk`` or
+    another CKAN host).  Requests send a descriptive User-Agent and follow
+    redirects, which real portals require.
     """
 
     source_id = "opendata"
@@ -143,12 +151,16 @@ class OpenDataSource:
         return candidates
 
     def _fetch(self, endpoint: str, params: dict[str, str]) -> dict[str, Any]:
+        # A descriptive User-Agent (polite crawling) and redirect-following are
+        # required by real portals — e.g. data.gov.uk 301-redirects to its CKAN
+        # host. Learned from live integration testing.
+        headers = {"User-Agent": _USER_AGENT}
         if self._client is not None:
-            response = self._client.get(endpoint, params=params)
+            response = self._client.get(endpoint, params=params, headers=headers)
             response.raise_for_status()
             return response.json()
-        with httpx.Client(timeout=self.timeout) as client:
-            response = client.get(endpoint, params=params)
+        with httpx.Client(timeout=self.timeout, follow_redirects=True) as client:
+            response = client.get(endpoint, params=params, headers=headers)
             response.raise_for_status()
             return response.json()
 

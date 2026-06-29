@@ -82,12 +82,74 @@ def require_token(
         )
 
 
+# -- job handlers (kind -> Callable[[params], result]) ---------------------
+# Handlers take JSON-serialisable params so jobs are durable and recoverable
+# across a restart (a Python closure could not be persisted).
+
+
+def _scout_job(params: dict[str, Any]) -> dict[str, Any]:
+    from dsf_scout.agent import ScoutAgent
+    from dsf_scout.sources import ManifestSource, OpenDataSource
+
+    req = ScoutRunRequest(**params)
+    s = get_settings()
+    assert s.data_dir is not None
+    sources: list[Any] = [ManifestSource(s.data_dir / "manifest.json")]
+    if req.live:
+        sources.append(OpenDataSource(req.portal, rows=req.rows))
+    return _dump(ScoutAgent(sources, settings=s).run(req.niche))
+
+
+def _evaluate_job(params: dict[str, Any]) -> dict[str, Any]:
+    from dsf_engine.evaluator import Evaluator
+
+    req = EvaluateRunRequest(**params)
+    return _dump(Evaluator(min_confidence=req.min_confidence).run(limit=req.limit))
+
+
+def _compile_job(params: dict[str, Any]) -> dict[str, Any]:
+    from dsf_compiler.builder import SiteCompiler
+
+    req = CompileRunRequest(**params)
+    return _dump(SiteCompiler().compile(req.evaluation_id, req.dataset, run_build=req.build))
+
+
+def _deploy_job(params: dict[str, Any]) -> dict[str, Any]:
+    from dsf_deployer.cloudflare import CloudflareDeployer
+
+    req = DeployRunRequest(**params)
+    return _dump(
+        CloudflareDeployer().deploy(req.site_generation_id, run_build=req.build, dry_run=req.dry_run)
+    )
+
+
+def _optimize_job(params: dict[str, Any]) -> dict[str, Any]:
+    from dsf_optimizer.optimizer import Optimizer
+
+    req = OptimizeRunRequest(**params)
+    return _dump(
+        Optimizer(min_impressions=req.min_impressions, max_ctr=req.max_ctr).run(
+            req.deployment_id, reinforce=req.reinforce, redeploy=req.redeploy
+        )
+    )
+
+
+_JOB_HANDLERS = {
+    "scout": _scout_job,
+    "evaluate": _evaluate_job,
+    "compile": _compile_job,
+    "deploy": _deploy_job,
+    "optimize": _optimize_job,
+}
+
+
 def create_app(*, inline_jobs: bool = False) -> FastAPI:
-    jobs = JobManager(inline=inline_jobs)
+    jobs = JobManager(_JOB_HANDLERS, inline=inline_jobs)
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         init_db(get_settings())  # ensure the ledger exists + is migrated
+        jobs.recover()  # reconcile orphaned jobs left by a prior process
         yield
         jobs.shutdown()
 
@@ -119,64 +181,23 @@ def create_app(*, inline_jobs: bool = False) -> FastAPI:
 
     @app.post("/scout/run", response_model=JobAccepted)
     def scout_run(req: ScoutRunRequest) -> JobAccepted:
-        def _run() -> dict[str, Any]:
-            from dsf_scout.agent import ScoutAgent
-            from dsf_scout.sources import ManifestSource, OpenDataSource
-
-            s = get_settings()
-            assert s.data_dir is not None
-            sources: list[Any] = [ManifestSource(s.data_dir / "manifest.json")]
-            if req.live:
-                sources.append(OpenDataSource(req.portal, rows=req.rows))
-            return _dump(ScoutAgent(sources, settings=s).run(req.niche))
-
-        return _accept(jobs.submit("scout", _run))
+        return _accept(jobs.submit("scout", req.model_dump()))
 
     @app.post("/evaluate/run", response_model=JobAccepted)
     def evaluate_run(req: EvaluateRunRequest) -> JobAccepted:
-        def _run() -> dict[str, Any]:
-            from dsf_engine.evaluator import Evaluator
-
-            return _dump(Evaluator(min_confidence=req.min_confidence).run(limit=req.limit))
-
-        return _accept(jobs.submit("evaluate", _run))
+        return _accept(jobs.submit("evaluate", req.model_dump()))
 
     @app.post("/compile/run", response_model=JobAccepted)
     def compile_run(req: CompileRunRequest) -> JobAccepted:
-        def _run() -> dict[str, Any]:
-            from dsf_compiler.builder import SiteCompiler
-
-            return _dump(
-                SiteCompiler().compile(req.evaluation_id, req.dataset, run_build=req.build)
-            )
-
-        return _accept(jobs.submit("compile", _run))
+        return _accept(jobs.submit("compile", req.model_dump()))
 
     @app.post("/deploy/run", response_model=JobAccepted)
     def deploy_run(req: DeployRunRequest) -> JobAccepted:
-        def _run() -> dict[str, Any]:
-            from dsf_deployer.cloudflare import CloudflareDeployer
-
-            return _dump(
-                CloudflareDeployer().deploy(
-                    req.site_generation_id, run_build=req.build, dry_run=req.dry_run
-                )
-            )
-
-        return _accept(jobs.submit("deploy", _run))
+        return _accept(jobs.submit("deploy", req.model_dump()))
 
     @app.post("/optimize/run", response_model=JobAccepted)
     def optimize_run(req: OptimizeRunRequest) -> JobAccepted:
-        def _run() -> dict[str, Any]:
-            from dsf_optimizer.optimizer import Optimizer
-
-            return _dump(
-                Optimizer(
-                    min_impressions=req.min_impressions, max_ctr=req.max_ctr
-                ).run(req.deployment_id, reinforce=req.reinforce, redeploy=req.redeploy)
-            )
-
-        return _accept(jobs.submit("optimize", _run))
+        return _accept(jobs.submit("optimize", req.model_dump()))
 
     # -- job polling ------------------------------------------------------
 

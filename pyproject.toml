@@ -45,6 +45,9 @@ select = ["E", "F", "I", "UP", "B"]
 testpaths = ["tests"]
 addopts = "-ra -q"
 pythonpath = ["."]
+markers = [
+    "live: hits real external services; skipped unless --run-live / RUN_LIVE=1",
+]
 
 # The root package itself is a metapackage that only aggregates the workspace
 # members; there is no importable top-level module, so we disable build of it.
