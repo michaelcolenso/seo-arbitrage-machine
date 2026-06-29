@@ -78,6 +78,15 @@ def _mount_api_commands() -> None:
     app.add_typer(serve_app, name="serve")
 
 
+def _mount_mcp_commands() -> None:
+    """Lazily attach the MCP server (`mcp`) command from the mcp package."""
+    try:
+        from dsf_mcp.cli import mcp_app
+    except ModuleNotFoundError:  # mcp server not installed (core used standalone)
+        return
+    app.add_typer(mcp_app, name="mcp")
+
+
 def _mount_compiler_commands() -> None:
     """Lazily attach the compilation (`compile`) command group."""
     try:
@@ -179,6 +188,7 @@ _mount_compiler_commands()
 _mount_deployer_commands()
 _mount_optimizer_commands()
 _mount_api_commands()
+_mount_mcp_commands()
 
 
 if __name__ == "__main__":  # pragma: no cover
