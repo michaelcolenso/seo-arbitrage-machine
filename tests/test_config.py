@@ -46,3 +46,20 @@ def test_empty_secret_strings_become_none() -> None:
     settings = Settings(cloudflare_api_token="", mcp_server_url="  ")
     assert settings.cloudflare_api_token is None
     assert settings.mcp_server_url is None
+
+
+def test_cloudflare_accepts_standard_env_names(monkeypatch) -> None:
+    # The standard Cloudflare/wrangler env var names are accepted as aliases.
+    monkeypatch.delenv("DSF_CLOUDFLARE_API_TOKEN", raising=False)
+    monkeypatch.delenv("DSF_CLOUDFLARE_ACCOUNT_ID", raising=False)
+    monkeypatch.setenv("CLOUDFLARE_API_TOKEN", "tok-standard")
+    monkeypatch.setenv("CLOUDFLARE_ACCOUNT_ID", "acct-standard")
+    settings = Settings()
+    assert settings.cloudflare_api_token == "tok-standard"
+    assert settings.cloudflare_account_id == "acct-standard"
+
+
+def test_cloudflare_dsf_prefix_takes_precedence(monkeypatch) -> None:
+    monkeypatch.setenv("CLOUDFLARE_API_TOKEN", "standard")
+    monkeypatch.setenv("DSF_CLOUDFLARE_API_TOKEN", "dsf")
+    assert Settings().cloudflare_api_token == "dsf"
