@@ -8,6 +8,15 @@ const description: string = meta.description ?? '';
 const calc = meta.calculator ?? { base: 0, result_label: 'Result', inputs: [] };
 const inputs: { key: string; label: string; default: number; weight: number }[] =
   Array.isArray(calc.inputs) ? calc.inputs : [];
+const base: string = (meta as Record<string, string>).canonical_base ?? '';
+const appLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebApplication',
+  name: title,
+  description: description || title,
+  applicationCategory: 'BusinessApplication',
+  ...(base ? { url: base } : {}),
+};
 ---
 
 <!doctype html>
@@ -17,6 +26,8 @@ const inputs: { key: string; label: string; default: number; weight: number }[] 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     {description && <meta name="description" content={description} />}
+    {base && <link rel="canonical" href={base + '/'} />}
+    <script type="application/ld+json" set:html={JSON.stringify(appLd)} />
     <script defer src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js"></script>
   </head>
   <body class="bg-slate-50 text-slate-900 antialiased">

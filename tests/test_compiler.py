@@ -100,6 +100,29 @@ def test_compile_hydrates_directory_site(isolated_env: Path) -> None:
     assert site.build_path == str(build_dir)
 
 
+def test_compile_generates_programmatic_routes(isolated_env: Path) -> None:
+    settings = reload_settings()
+    evaluation_id = _seed_evaluation(settings)  # high_volume_columns: city, category
+    dataset = _write_dataset(isolated_env)  # rows: Austin/chemical, Denver/hvac
+
+    report = SiteCompiler(settings=settings).compile(evaluation_id, dataset)
+
+    assert report.status == "COMPLETED"
+    assert report.route_count == 2
+
+    build_dir = Path(report.build_path)
+    routes = json.loads((build_dir / "src" / "data" / "routes.json").read_text())
+    assert {r["path"] for r in routes} == {"/austin/chemical", "/denver/hvac"}
+    # The dynamic route page + sitemap/robots endpoints were shipped.
+    assert (build_dir / "src" / "pages" / "[...slug].astro").is_file()
+    assert (build_dir / "src" / "pages" / "sitemap.xml.ts").is_file()
+    assert (build_dir / "src" / "pages" / "robots.txt.ts").is_file()
+
+    meta = json.loads((build_dir / "src" / "data" / "meta.json").read_text())
+    assert meta["route_count"] == 2
+    assert meta["canonical_base"].endswith(".pages.dev")
+
+
 def test_compile_selects_calculator_template(isolated_env: Path) -> None:
     settings = reload_settings()
     evaluation_id = _seed_evaluation(settings, template_type=TemplateType.CALCULATOR)
