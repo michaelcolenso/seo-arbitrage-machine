@@ -112,6 +112,31 @@ def test_unknown_job_404(client) -> None:
     assert client.get("/jobs/does-not-exist").status_code == 404
 
 
+def test_api_token_enforced_when_set(isolated_env: Path, monkeypatch) -> None:
+    from dsf_core.config import reload_settings
+
+    monkeypatch.setenv("DSF_API_TOKEN", "s3cret")
+    reload_settings()
+    app = create_app(inline_jobs=True)
+    with TestClient(app) as c:
+        # Public surfaces stay open.
+        assert c.get("/healthz").status_code == 200
+        assert c.get("/").status_code == 200
+        # Protected routes require the token.
+        assert c.get("/fleet/status").status_code == 401
+        assert c.post("/scout/run", json={"niche": "x"}).status_code == 401
+        # Accepted via either header scheme.
+        assert c.get("/fleet/status", headers={"Authorization": "Bearer s3cret"}).status_code == 200
+        assert c.get("/fleet/status", headers={"X-API-Key": "s3cret"}).status_code == 200
+        # Wrong token is rejected.
+        assert c.get("/fleet/status", headers={"X-API-Key": "nope"}).status_code == 401
+
+
+def test_api_open_when_token_unset(client) -> None:
+    # The default fixture sets no DSF_API_TOKEN, so protected routes are open.
+    assert client.get("/fleet/status").status_code == 200
+
+
 def test_console_served_at_root(client) -> None:
     resp = client.get("/")
     assert resp.status_code == 200

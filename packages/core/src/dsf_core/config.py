@@ -79,6 +79,15 @@ class Settings(BaseSettings):
     cloudflare_api_token: str | None = Field(default=None)
     cloudflare_account_id: str | None = Field(default=None)
 
+    # --- Control-plane API ------------------------------------------------
+    api_token: str | None = Field(
+        default=None,
+        description=(
+            "When set, the control-plane API requires this token via an "
+            "'Authorization: Bearer <token>' or 'X-API-Key' header. Unset = open (dev)."
+        ),
+    )
+
     # --- Storage paths ----------------------------------------------------
     data_dir: Path | None = Field(
         default=None,
@@ -97,7 +106,9 @@ class Settings(BaseSettings):
         description="Directory of file-driven agent mocks. Defaults to <data_dir>/mocks.",
     )
 
-    @field_validator("mcp_server_url", "cloudflare_api_token", "cloudflare_account_id")
+    @field_validator(
+        "mcp_server_url", "cloudflare_api_token", "cloudflare_account_id", "api_token"
+    )
     @classmethod
     def _empty_to_none(cls, value: str | None) -> str | None:
         """Treat empty environment strings as unset."""
