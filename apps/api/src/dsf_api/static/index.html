@@ -4,16 +4,22 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>DataSiteForge · Operator Console</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <!-- Self-hosted assets only: the console handles the control-plane token, so
+         it must never execute third-party scripts that could exfiltrate it. -->
+    <link rel="stylesheet" href="/static/console.css" />
+    <script defer src="/static/alpine.min.js"></script>
   </head>
   <body class="bg-slate-100 text-slate-900 antialiased">
     <main class="mx-auto max-w-5xl px-4 py-8" x-data="dsfConsole()" x-init="refresh()">
-      <header class="mb-6 flex items-center justify-between">
+      <header class="mb-6 flex items-center justify-between gap-3">
         <h1 class="text-2xl font-bold tracking-tight">DataSiteForge · Operator Console</h1>
-        <button @click="refresh()" class="rounded-lg bg-slate-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700">
-          Refresh
-        </button>
+        <div class="flex items-center gap-2">
+          <input x-model="token" @change="saveToken()" type="password" placeholder="API token (if set)"
+                 class="w-44 rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
+          <button @click="refresh()" class="rounded-lg bg-slate-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700">
+            Refresh
+          </button>
+        </div>
       </header>
 
       <!-- Revenue scorecard -->
@@ -81,9 +87,18 @@
           niche: '',
           live: false,
           lastJob: '',
+          token: localStorage.getItem('dsf_token') || '',
+          saveToken() {
+            localStorage.setItem('dsf_token', this.token || '');
+          },
+          headers(extra) {
+            const h = Object.assign({}, extra || {});
+            if (this.token) h['X-API-Key'] = this.token;
+            return h;
+          },
           async refresh() {
-            this.fleet = await (await fetch('/fleet/status')).json();
-            this.revenue = await (await fetch('/analytics/revenue')).json();
+            this.fleet = await (await fetch('/fleet/status', { headers: this.headers() })).json();
+            this.revenue = await (await fetch('/analytics/revenue', { headers: this.headers() })).json();
           },
           scorecards() {
             const r = this.revenue || {};
@@ -98,7 +113,7 @@
             this.lastJob = 'submitting…';
             const resp = await fetch('/scout/run', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: this.headers({ 'Content-Type': 'application/json' }),
               body: JSON.stringify({ niche: this.niche, live: this.live }),
             });
             const job = await resp.json();
@@ -107,7 +122,7 @@
           },
           async poll(jobId) {
             for (let i = 0; i < 30; i++) {
-              const job = await (await fetch(`/jobs/${jobId}`)).json();
+              const job = await (await fetch(`/jobs/${jobId}`, { headers: this.headers() })).json();
               this.lastJob = `job ${jobId.slice(0, 8)} · ${job.status}`;
               if (job.status === 'succeeded' || job.status === 'failed') {
                 await this.refresh();

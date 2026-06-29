@@ -112,8 +112,55 @@ def test_unknown_job_404(client) -> None:
     assert client.get("/jobs/does-not-exist").status_code == 404
 
 
+def test_api_token_enforced_when_set(isolated_env: Path, monkeypatch) -> None:
+    from dsf_core.config import reload_settings
+
+    monkeypatch.setenv("DSF_API_TOKEN", "s3cret")
+    reload_settings()
+    app = create_app(inline_jobs=True)
+    with TestClient(app) as c:
+        # Public surfaces stay open.
+        assert c.get("/healthz").status_code == 200
+        assert c.get("/").status_code == 200
+        # Protected routes require the token.
+        assert c.get("/fleet/status").status_code == 401
+        assert c.post("/scout/run", json={"niche": "x"}).status_code == 401
+        # Accepted via either header scheme.
+        assert c.get("/fleet/status", headers={"Authorization": "Bearer s3cret"}).status_code == 200
+        assert c.get("/fleet/status", headers={"X-API-Key": "s3cret"}).status_code == 200
+        # Wrong token is rejected.
+        assert c.get("/fleet/status", headers={"X-API-Key": "nope"}).status_code == 401
+
+
+def test_api_open_when_token_unset(client) -> None:
+    # The default fixture sets no DSF_API_TOKEN, so protected routes are open.
+    assert client.get("/fleet/status").status_code == 200
+
+
 def test_console_served_at_root(client) -> None:
     resp = client.get("/")
     assert resp.status_code == 200
     assert "DataSiteForge" in resp.text
     assert "dsfConsole" in resp.text
+
+
+def test_console_uses_only_self_hosted_assets(client) -> None:
+    # The console handles the API token, so it must not load third-party scripts.
+    html = client.get("/").text
+    assert "cdn.tailwindcss.com" not in html
+    assert "unpkg.com" not in html
+    assert "/static/alpine.min.js" in html
+    assert "/static/console.css" in html
+
+
+def test_static_assets_public_even_under_auth(isolated_env: Path, monkeypatch) -> None:
+    from dsf_core.config import reload_settings
+
+    monkeypatch.setenv("DSF_API_TOKEN", "s3cret")
+    reload_settings()
+    app = create_app(inline_jobs=True)
+    with TestClient(app) as c:
+        assert c.get("/static/console.css").status_code == 200
+        asset = c.get("/static/alpine.min.js")
+        assert asset.status_code == 200
+        assert len(asset.content) > 1000

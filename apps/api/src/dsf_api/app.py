@@ -26,8 +26,9 @@ from dsf_engine.models import (
     SiteGeneration,
 )
 from dsf_engine.sqlite_engine import init_db, session_scope
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func
 from sqlmodel import select
 
@@ -43,10 +44,42 @@ from .schemas import (
 
 _STATIC_DIR = Path(__file__).parent / "static"
 
+# Endpoints reachable without a token: the public console and the liveness probe.
+_PUBLIC_PATHS = frozenset({"/", "/healthz"})
+
 
 def _dump(report: Any) -> dict[str, Any]:
     """Serialise a pydantic report to a JSON-safe dict."""
     return report.model_dump(mode="json")
+
+
+def require_token(
+    request: Request,
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+) -> None:
+    """Enforce the API token on protected routes when one is configured.
+
+    Applied as a global dependency.  When ``DSF_API_TOKEN`` is unset the API is
+    open (development); when set, every route except the console and health probe
+    requires a matching ``Authorization: Bearer <token>`` or ``X-API-Key`` header.
+    """
+    if request.url.path in _PUBLIC_PATHS:
+        return
+    expected = get_settings().api_token
+    if not expected:
+        return
+    provided: str | None = None
+    if authorization and authorization.lower().startswith("bearer "):
+        provided = authorization[7:].strip()
+    elif x_api_key:
+        provided = x_api_key.strip()
+    if not provided or provided != expected:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="missing or invalid API token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 
 def create_app(*, inline_jobs: bool = False) -> FastAPI:
@@ -59,8 +92,15 @@ def create_app(*, inline_jobs: bool = False) -> FastAPI:
         jobs.shutdown()
 
     app = FastAPI(
-        title="DataSiteForge Control Plane", version=core_version, lifespan=lifespan
+        title="DataSiteForge Control Plane",
+        version=core_version,
+        lifespan=lifespan,
+        dependencies=[Depends(require_token)],
     )
+
+    # Self-hosted console assets (CSS/JS). Mounted sub-apps bypass the global
+    # auth dependency, so these stay publicly fetchable — they hold no secrets.
+    app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
 
     # -- health & console -------------------------------------------------
 
