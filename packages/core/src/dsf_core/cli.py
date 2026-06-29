@@ -60,6 +60,33 @@ def _mount_deployer_commands() -> None:
     app.add_typer(deploy_app, name="deploy")
 
 
+def _mount_optimizer_commands() -> None:
+    """Lazily attach the optimization (`optimize`) command group from the optimizer."""
+    try:
+        from dsf_optimizer.cli import optimize_app
+    except ModuleNotFoundError:  # optimizer not installed (core used standalone)
+        return
+    app.add_typer(optimize_app, name="optimize")
+
+
+def _mount_api_commands() -> None:
+    """Lazily attach the API server (`serve`) command from the api app."""
+    try:
+        from dsf_api.cli import serve_app
+    except ModuleNotFoundError:  # api app not installed (core used standalone)
+        return
+    app.add_typer(serve_app, name="serve")
+
+
+def _mount_mcp_commands() -> None:
+    """Lazily attach the MCP server (`mcp`) command from the mcp package."""
+    try:
+        from dsf_mcp.cli import mcp_app
+    except ModuleNotFoundError:  # mcp server not installed (core used standalone)
+        return
+    app.add_typer(mcp_app, name="mcp")
+
+
 def _mount_compiler_commands() -> None:
     """Lazily attach the compilation (`compile`) command group."""
     try:
@@ -159,6 +186,9 @@ _mount_engine_commands()
 _mount_scout_commands()
 _mount_compiler_commands()
 _mount_deployer_commands()
+_mount_optimizer_commands()
+_mount_api_commands()
+_mount_mcp_commands()
 
 
 if __name__ == "__main__":  # pragma: no cover

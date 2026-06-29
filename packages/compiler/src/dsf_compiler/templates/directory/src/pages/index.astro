@@ -3,6 +3,7 @@
 // Consumes the strict JSON payload the compiler writes into src/data/.
 import rows from '../data/rows.json';
 import meta from '../data/meta.json';
+import routes from '../data/routes.json';
 
 const columns: string[] =
   Array.isArray(meta.columns) && meta.columns.length > 0
@@ -12,6 +13,15 @@ const title: string = meta.title ?? 'Data Directory';
 const description: string = meta.description ?? '';
 const leadGen: boolean = Boolean(meta.lead_gen);
 const leadWebhook: string = meta.lead_webhook ?? '';
+const base: string = (meta as Record<string, string>).canonical_base ?? '';
+const routeList = (routes as { path: string; title: string }[]) ?? [];
+const datasetLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Dataset',
+  name: title,
+  description: description || title,
+  ...(base ? { url: base } : {}),
+};
 ---
 
 <!doctype html>
@@ -21,6 +31,8 @@ const leadWebhook: string = meta.lead_webhook ?? '';
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     {description && <meta name="description" content={description} />}
+    {base && <link rel="canonical" href={base + '/'} />}
+    <script type="application/ld+json" set:html={JSON.stringify(datasetLd)} />
     <script defer src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js"></script>
   </head>
   <body class="bg-slate-50 text-slate-900 antialiased">
@@ -29,6 +41,20 @@ const leadWebhook: string = meta.lead_webhook ?? '';
         <h1 class="text-3xl font-bold tracking-tight">{title}</h1>
         {description && <p class="mt-2 text-slate-600">{description}</p>}
       </header>
+
+      {routeList.length > 0 && (
+        <nav class="mb-8 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Browse</h2>
+          <div class="flex flex-wrap gap-2">
+            {routeList.map((route) => (
+              <a href={route.path}
+                 class="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-700 hover:bg-indigo-100 hover:text-indigo-700">
+                {route.title}
+              </a>
+            ))}
+          </div>
+        </nav>
+      )}
 
       <div x-data="directory()" x-init="init()">
         <div class="mb-4 flex items-center gap-3">

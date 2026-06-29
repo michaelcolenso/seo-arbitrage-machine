@@ -9,7 +9,9 @@ from decimal import Decimal
 from dsf_compiler.hydration import (
     build_calculator_block,
     build_meta_payload,
+    build_routes_payload,
     build_rows_payload,
+    route_slug,
 )
 from dsf_engine.models import (
     ArbitrageOpportunity,
@@ -48,6 +50,45 @@ def test_build_rows_payload_nulls_non_finite_decimals() -> None:
     out = build_rows_payload([{"x": Decimal("NaN"), "y": Decimal("2.5")}])
     assert out[0]["x"] is None
     assert out[0]["y"] == 2.5
+
+
+def test_route_slug() -> None:
+    assert route_slug("Austin, TX!") == "austin-tx"
+    assert route_slug("  Solar / Wind  ") == "solar-wind"
+
+
+def test_build_routes_payload_groups_by_columns() -> None:
+    rows = [
+        {"city": "Austin", "category": "chemical", "n": 1},
+        {"city": "Austin", "category": "chemical", "n": 2},
+        {"city": "Denver", "category": "hvac", "n": 3},
+    ]
+    columns = [
+        {"name": "city", "type": "VARCHAR"},
+        {"name": "category", "type": "VARCHAR"},
+        {"name": "n", "type": "BIGINT"},
+    ]
+    routes = build_routes_payload(
+        rows, columns, route_columns=["city", "category"], niche_title="Compliance"
+    )
+    assert sorted(r["path"] for r in routes) == ["/austin/chemical", "/denver/hvac"]
+    austin = next(r for r in routes if r["path"] == "/austin/chemical")
+    assert austin["row_count"] == 2
+    assert austin["params"] == {"city": "Austin", "category": "chemical"}
+    assert "Compliance" in austin["title"]
+
+
+def test_build_routes_payload_empty_without_route_columns() -> None:
+    rows = [{"a": 1}]
+    columns = [{"name": "a", "type": "BIGINT"}]
+    assert build_routes_payload(rows, columns, route_columns=["missing"], niche_title="X") == []
+
+
+def test_build_routes_payload_skips_null_keys() -> None:
+    rows = [{"city": "Austin", "n": 1}, {"city": None, "n": 2}, {"city": "", "n": 3}]
+    columns = [{"name": "city", "type": "VARCHAR"}, {"name": "n", "type": "BIGINT"}]
+    routes = build_routes_payload(rows, columns, route_columns=["city"], niche_title="X")
+    assert [r["path"] for r in routes] == ["/austin"]
 
 
 def test_build_calculator_block_picks_numeric_columns() -> None:

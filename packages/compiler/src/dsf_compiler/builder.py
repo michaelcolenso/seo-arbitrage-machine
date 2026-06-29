@@ -33,7 +33,12 @@ from dsf_engine.models import (
 from dsf_engine.sqlite_engine import init_db, session_scope
 from pydantic import BaseModel, Field
 
-from .hydration import build_meta_payload, build_rows_payload
+from .hydration import (
+    build_meta_payload,
+    build_routes_payload,
+    build_rows_payload,
+    title_from,
+)
 
 _log = get_logger("compiler.builder")
 
@@ -51,6 +56,7 @@ class CompileReport(BaseModel):
     template_type: str | None = None
     build_path: str | None = None
     row_count: int = 0
+    route_count: int = 0
     built: bool = False
     error_type: str | None = None
     message: str | None = None
@@ -65,8 +71,10 @@ class SiteCompiler:
         settings: Settings | None = None,
         templates_dir: Path | None = None,
         row_limit: int = 500,
+        route_limit: int = 500,
     ) -> None:
         self.settings = settings or get_settings()
+        self.route_limit = route_limit
         # Templates ship as package data next to this module, so they resolve
         # correctly from an installed wheel as well as the source workspace —
         # never depending on the current working directory.
@@ -116,7 +124,7 @@ class SiteCompiler:
         build_name = f"{_slugify(niche_id)}-e{evaluation_id}-s{site_id}"
 
         try:
-            row_count, build_path = self._hydrate(
+            row_count, route_count, build_path = self._hydrate(
                 evaluation, opportunity, dataset_path, build_name
             )
             built = self._maybe_build(build_path) if run_build else False
@@ -168,6 +176,7 @@ class SiteCompiler:
                 template_type=evaluation.template_type.value,
                 build_path=str(build_path),
                 row_count=row_count,
+                route_count=route_count,
                 built=built,
             )
         except Exception as exc:  # noqa: BLE001 — convert to a reflection payload
@@ -199,8 +208,8 @@ class SiteCompiler:
         opportunity: ArbitrageOpportunity | None,
         dataset_path: str | Path,
         build_name: str,
-    ) -> tuple[int, Path]:
-        """Copy the template and write the data-hydration layer; return (rows, path)."""
+    ) -> tuple[int, int, Path]:
+        """Copy the template, write the hydration layer; return (rows, routes, path)."""
         dataset = Path(dataset_path).expanduser()
         if not dataset.is_file():
             raise FileNotFoundError(f"dataset not found: {dataset}")
@@ -215,7 +224,30 @@ class SiteCompiler:
 
         columns = profile["columns"]
         rows_payload = build_rows_payload(profile["sample_rows"], limit=self.row_limit)
-        meta_payload = build_meta_payload(evaluation, opportunity, columns)
+
+        niche_id = getattr(opportunity, "niche_id", None)
+        canonical_base = f"https://{_slugify(niche_id)}.pages.dev" if niche_id else ""
+        # Programmatic per-route fan-out only applies to the directory theme;
+        # the calculator is a single parametric page.
+        route_columns = (
+            json.loads(evaluation.seo_high_volume_columns or "[]")
+            if evaluation.template_type == TemplateType.DIRECTORY
+            else []
+        )
+        routes_payload = build_routes_payload(
+            rows_payload,
+            columns,
+            route_columns=route_columns,
+            niche_title=title_from(niche_id),
+            max_routes=self.route_limit,
+        )
+        meta_payload = build_meta_payload(
+            evaluation,
+            opportunity,
+            columns,
+            canonical_base=canonical_base,
+            route_count=len(routes_payload),
+        )
 
         template_dir = self.templates_dir / evaluation.template_type.value
         if not template_dir.is_dir():
@@ -238,7 +270,10 @@ class SiteCompiler:
         (data_dir / "meta.json").write_text(
             json.dumps(meta_payload, indent=2, allow_nan=False), encoding="utf-8"
         )
-        return len(rows_payload), build_dir
+        (data_dir / "routes.json").write_text(
+            json.dumps(routes_payload, indent=2, allow_nan=False), encoding="utf-8"
+        )
+        return len(rows_payload), len(routes_payload), build_dir
 
     def _maybe_build(self, build_dir: Path) -> bool:
         """Optionally run the real Astro build; never raise on failure."""

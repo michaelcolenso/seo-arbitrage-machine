@@ -205,6 +205,29 @@ class AnalyticsLog(SQLModel, table=True):
     captured_at: datetime = Field(default_factory=utcnow, index=True)
 
 
+class Optimization(SQLModel, table=True):
+    """A reinforcement action taken on an underperforming page (Phase 6/7).
+
+    The optimizer flags pages with high impressions but weak click-through,
+    requests a rewrite from the Agent Bridge, applies it to the hydration layer,
+    and (optionally) silently redeploys.  Each attempt is recorded here.
+    """
+
+    __tablename__ = "optimizations"
+
+    id: int | None = Field(default=None, primary_key=True)
+    deployment_id: int | None = Field(default=None, foreign_key="deployments.id", index=True)
+    page_path: str = Field(index=True)
+    impressions: int = Field(default=0)
+    clicks: int = Field(default=0)
+    ctr: float = Field(default=0.0, description="Click-through ratio at flag time.")
+    action: str = Field(default="meta_rewrite", description="Reinforcement action applied.")
+    detail: str | None = Field(default=None)
+    redeployed: bool = Field(default=False)
+    status: JobStatus = Field(default=JobStatus.PENDING, index=True)
+    created_at: datetime = Field(default_factory=utcnow)
+
+
 # Convenience collection used by status reporting / verification helpers.
 ALL_TABLES: tuple[type[SQLModel], ...] = (
     ScoutJob,
@@ -214,4 +237,5 @@ ALL_TABLES: tuple[type[SQLModel], ...] = (
     ArbitrageOpportunity,
     Evaluation,
     AnalyticsLog,
+    Optimization,
 )

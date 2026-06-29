@@ -26,6 +26,8 @@ packages/
   scout/                # arbitrage miner + multi-source candidate discovery
   compiler/             # Astro hydration compiler; ships the directory/calculator
                         #   themes as package data under src/dsf_compiler/templates/
+  deployer/             # zero-cost Cloudflare Pages deployment (REST + wrangler)
+  optimizer/            # traffic telemetry ingestion + reinforcement loops
 apps/                   # (reserved) FastAPI api + operator dashboard — Phase 8
 data/                   # generated state stores + agent mock fixtures
 scripts/                # standalone verification / fleet scripts
