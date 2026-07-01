@@ -119,11 +119,13 @@ class Settings(BaseSettings):
         "mcp_server_url", "cloudflare_api_token", "cloudflare_account_id", "api_token"
     )
     @classmethod
-    def _empty_to_none(cls, value: str | None) -> str | None:
-        """Treat empty environment strings as unset."""
-        if value is not None and value.strip() == "":
+    def _clean_secret(cls, value: str | None) -> str | None:
+        """Strip surrounding whitespace (env vars often carry a trailing newline)
+        and treat an empty string as unset."""
+        if value is None:
             return None
-        return value
+        value = value.strip()
+        return value or None
 
     @model_validator(mode="after")
     def _resolve_paths(self) -> Settings:

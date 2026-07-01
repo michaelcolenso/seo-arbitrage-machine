@@ -43,6 +43,16 @@ def isolated_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Pa
     monkeypatch.setenv("DSF_EXECUTION_MODE", "standalone")
     monkeypatch.setenv("DSF_IS_PRODUCTION", "false")
     monkeypatch.setenv("DSF_AGENT_TRANSPORT", "mock")
+    # Keep tests hermetic: clear any ambient credentials from the real
+    # environment (e.g. Cloudflare tokens) so behaviour never depends on them.
+    for _var in (
+        "CLOUDFLARE_API_TOKEN",
+        "CLOUDFLARE_ACCOUNT_ID",
+        "DSF_CLOUDFLARE_API_TOKEN",
+        "DSF_CLOUDFLARE_ACCOUNT_ID",
+        "DSF_API_TOKEN",
+    ):
+        monkeypatch.delenv(_var, raising=False)
 
     # Ensure cached settings/engine pick up the overrides.
     from dsf_core.config import reload_settings

@@ -6,4 +6,6 @@ import tailwind from '@astrojs/tailwind';
 export default defineConfig({
   output: 'static',
   integrations: [tailwind()],
+  build: { format: 'file' },
+  trailingSlash: 'never',
 });

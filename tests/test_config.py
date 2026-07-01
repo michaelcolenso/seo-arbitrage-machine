@@ -63,3 +63,10 @@ def test_cloudflare_dsf_prefix_takes_precedence(monkeypatch) -> None:
     monkeypatch.setenv("CLOUDFLARE_API_TOKEN", "standard")
     monkeypatch.setenv("DSF_CLOUDFLARE_API_TOKEN", "dsf")
     assert Settings().cloudflare_api_token == "dsf"
+
+
+def test_secret_whitespace_is_stripped() -> None:
+    # Env vars often carry a trailing newline; it must not reach wrangler/API.
+    settings = Settings(cloudflare_api_token="  tok123\n", cloudflare_account_id="acct456\n")
+    assert settings.cloudflare_api_token == "tok123"
+    assert settings.cloudflare_account_id == "acct456"
