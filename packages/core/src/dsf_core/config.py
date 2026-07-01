@@ -12,7 +12,7 @@ import functools
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, computed_field, field_validator, model_validator
+from pydantic import AliasChoices, Field, computed_field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ExecutionMode = Literal["agent", "standalone"]
@@ -50,6 +50,7 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
+        populate_by_name=True,  # allow constructing by field name despite aliases
     )
 
     # --- Execution / agent runtime ---------------------------------------
@@ -75,9 +76,24 @@ class Settings(BaseSettings):
         description="Timeout for a single Agent Bridge request.",
     )
 
-    # --- Cloudflare (reserved for Phase 5) -------------------------------
-    cloudflare_api_token: str | None = Field(default=None)
-    cloudflare_account_id: str | None = Field(default=None)
+    # --- Cloudflare (Phase 5 deploy) -------------------------------------
+    # Accept both the DSF_-prefixed name and the standard Cloudflare/wrangler
+    # env var name, so credentials already present for wrangler are picked up.
+    cloudflare_api_token: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("DSF_CLOUDFLARE_API_TOKEN", "CLOUDFLARE_API_TOKEN"),
+    )
+    cloudflare_account_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("DSF_CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_ACCOUNT_ID"),
+    )
+
+    # --- Ahrefs (real keyword metrics for the Scout) ---------------------
+    ahrefs_api_token: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("DSF_AHREFS_API_TOKEN", "AHREFS_API_TOKEN"),
+        description="Ahrefs API v3 token; when set, the Scout scores with real metrics.",
+    )
 
     # --- Control-plane API ------------------------------------------------
     api_token: str | None = Field(
@@ -107,14 +123,20 @@ class Settings(BaseSettings):
     )
 
     @field_validator(
-        "mcp_server_url", "cloudflare_api_token", "cloudflare_account_id", "api_token"
+        "mcp_server_url",
+        "cloudflare_api_token",
+        "cloudflare_account_id",
+        "api_token",
+        "ahrefs_api_token",
     )
     @classmethod
-    def _empty_to_none(cls, value: str | None) -> str | None:
-        """Treat empty environment strings as unset."""
-        if value is not None and value.strip() == "":
+    def _clean_secret(cls, value: str | None) -> str | None:
+        """Strip surrounding whitespace (env vars often carry a trailing newline)
+        and treat an empty string as unset."""
+        if value is None:
             return None
-        return value
+        value = value.strip()
+        return value or None
 
     @model_validator(mode="after")
     def _resolve_paths(self) -> Settings:
