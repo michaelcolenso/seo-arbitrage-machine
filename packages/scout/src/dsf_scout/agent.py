@@ -26,6 +26,7 @@ from dsf_engine.models import utcnow
 from dsf_engine.sqlite_engine import init_db, session_scope
 from pydantic import BaseModel, Field
 
+from .ahrefs import AhrefsEnricher, AhrefsError
 from .miner import ArbitrageMiner
 from .models import ArbitrageOpportunity, MiningResult, RejectedCandidate
 from .sources import CandidateSource, SourceError
@@ -75,6 +76,7 @@ class ScoutAgent:
         settings: Settings | None = None,
         miner: ArbitrageMiner | None = None,
         bridge: AgentBridge | None = None,
+        enricher: AhrefsEnricher | None = None,
     ) -> None:
         if not sources:
             raise ValueError("ScoutAgent requires at least one candidate source")
@@ -82,6 +84,8 @@ class ScoutAgent:
         self.settings = settings or get_settings()
         self.miner = miner or ArbitrageMiner()
         self.bridge = bridge or AgentBridge(self.settings)
+        # Real Ahrefs metrics take over when a token is configured.
+        self.enricher = enricher or AhrefsEnricher(self.settings)
 
     def run(self, seed_niche: str) -> ScoutRunReport:
         """Execute one full scouting pass for ``seed_niche``."""
@@ -156,10 +160,31 @@ class ScoutAgent:
         return pool, reflections
 
     def _enrich(self, candidate: dict[str, Any]) -> dict[str, Any]:
-        """Fill missing scoring fields via the Agent Bridge (mock-aware)."""
-        if all(field in candidate for field in _SCORING_FIELDS):
-            return candidate
-        response = self.bridge.request("keyword_metrics", {"candidate": candidate})
+        """Enrich a candidate with keyword metrics.
+
+        Real Ahrefs metrics (when a token is configured) take precedence and
+        *override* the keyword-market fields; any still-missing scoring fields are
+        then filled from the Agent Bridge (mock-aware).
+        """
+        merged = dict(candidate)
+
+        if self.enricher is not None and self.enricher.available():
+            try:
+                real = self.enricher.enrich(candidate)
+            except AhrefsError as exc:
+                real = {}
+                log_event(
+                    _log, "scout.enrich.ahrefs_failed", level=30,
+                    niche_id=candidate.get("niche_id"), error=str(exc),
+                )
+            if real:
+                merged.update(real)  # real data wins
+                log_event(_log, "scout.enrich.ahrefs", niche_id=candidate.get("niche_id"))
+
+        if all(field in merged for field in _SCORING_FIELDS):
+            return merged
+
+        response = self.bridge.request("keyword_metrics", {"candidate": merged})
         if not response.ok:
             log_event(
                 _log,
@@ -168,8 +193,7 @@ class ScoutAgent:
                 niche_id=candidate.get("niche_id"),
                 error=response.error,
             )
-            return candidate
-        merged = dict(candidate)
+            return merged
         for key, value in response.result.items():
             merged.setdefault(key, value)
         return merged

@@ -34,6 +34,25 @@ def test_opendata_live_returns_candidates() -> None:
 
 
 @pytest.mark.live
+def test_ahrefs_overview_live() -> None:
+    # Validates the real Ahrefs response shape; skips without a token.
+    from dsf_core.config import Settings
+    from dsf_scout.ahrefs import AhrefsEnricher, AhrefsError
+
+    token = os.environ.get("AHREFS_API_TOKEN") or os.environ.get("DSF_AHREFS_API_TOKEN")
+    if not token:
+        pytest.skip("AHREFS_API_TOKEN not set")
+    enricher = AhrefsEnricher(Settings(ahrefs_api_token=token))
+    try:
+        out = enricher.enrich({"niche_id": "x", "primary_keywords": ["seo tools"]})
+    except AhrefsError as exc:
+        pytest.skip(f"ahrefs unavailable: {exc}")
+    assert "estimated_monthly_volume" in out
+    assert out["estimated_monthly_volume"] >= 0
+    assert out["keyword_difficulty"] >= 0
+
+
+@pytest.mark.live
 def test_opendata_live_follows_redirects() -> None:
     # data.gov.uk 301-redirects to its CKAN host; this breaks without
     # follow_redirects=True, so it guards that regression against the real API.

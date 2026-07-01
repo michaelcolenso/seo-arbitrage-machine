@@ -88,6 +88,13 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("DSF_CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_ACCOUNT_ID"),
     )
 
+    # --- Ahrefs (real keyword metrics for the Scout) ---------------------
+    ahrefs_api_token: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("DSF_AHREFS_API_TOKEN", "AHREFS_API_TOKEN"),
+        description="Ahrefs API v3 token; when set, the Scout scores with real metrics.",
+    )
+
     # --- Control-plane API ------------------------------------------------
     api_token: str | None = Field(
         default=None,
@@ -116,7 +123,11 @@ class Settings(BaseSettings):
     )
 
     @field_validator(
-        "mcp_server_url", "cloudflare_api_token", "cloudflare_account_id", "api_token"
+        "mcp_server_url",
+        "cloudflare_api_token",
+        "cloudflare_account_id",
+        "api_token",
+        "ahrefs_api_token",
     )
     @classmethod
     def _clean_secret(cls, value: str | None) -> str | None:
