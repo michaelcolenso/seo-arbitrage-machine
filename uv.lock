@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
@@ -264,6 +264,7 @@ dependencies = [
     { name = "datasiteforge-optimizer" },
     { name = "datasiteforge-scout" },
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "uvicorn" },
 ]
 
@@ -276,6 +277,7 @@ requires-dist = [
     { name = "datasiteforge-optimizer", editable = "packages/optimizer" },
     { name = "datasiteforge-scout", editable = "packages/scout" },
     { name = "fastapi", specifier = ">=0.111" },
+    { name = "httpx", specifier = ">=0.27" },
     { name = "uvicorn", specifier = ">=0.30" },
 ]
 

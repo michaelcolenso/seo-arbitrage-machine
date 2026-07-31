@@ -10,14 +10,14 @@ the defensive-failure-isolation mandate.
 from __future__ import annotations
 
 import enum
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlmodel import Field, SQLModel
 
 
 def utcnow() -> datetime:
     """Timezone-aware UTC timestamp used for all record stamps."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class JobStatus(str, enum.Enum):
@@ -205,6 +205,23 @@ class AnalyticsLog(SQLModel, table=True):
     captured_at: datetime = Field(default_factory=utcnow, index=True)
 
 
+class Lead(SQLModel, table=True):
+    """A lead captured by a generated directory and optionally forwarded."""
+
+    __tablename__ = "leads"
+
+    id: int | None = Field(default=None, primary_key=True)
+    name: str
+    email: str = Field(index=True)
+    company: str | None = Field(default=None)
+    niche_id: str | None = Field(default=None, index=True)
+    source_url: str | None = Field(default=None)
+    estimated_value_cents: int = Field(default=0, ge=0)
+    forward_status: str = Field(default="not_configured", index=True)
+    forward_error: str | None = Field(default=None)
+    created_at: datetime = Field(default_factory=utcnow, index=True)
+
+
 class Optimization(SQLModel, table=True):
     """A reinforcement action taken on an underperforming page (Phase 6/7).
 
@@ -262,6 +279,7 @@ ALL_TABLES: tuple[type[SQLModel], ...] = (
     ArbitrageOpportunity,
     Evaluation,
     AnalyticsLog,
+    Lead,
     Optimization,
     Job,
 )

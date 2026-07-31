@@ -125,6 +125,8 @@ def test_api_token_enforced_when_set(isolated_env: Path, monkeypatch) -> None:
         # Protected routes require the token.
         assert c.get("/fleet/status").status_code == 401
         assert c.post("/scout/run", json={"niche": "x"}).status_code == 401
+        assert c.get("/leads").status_code == 401
+        assert c.post("/leads", json={"name": "A", "email": "a@example.com"}).status_code == 201
         # Accepted via either header scheme.
         assert c.get("/fleet/status", headers={"Authorization": "Bearer s3cret"}).status_code == 200
         assert c.get("/fleet/status", headers={"X-API-Key": "s3cret"}).status_code == 200
@@ -164,3 +166,34 @@ def test_static_assets_public_even_under_auth(isolated_env: Path, monkeypatch) -
         asset = c.get("/static/alpine.min.js")
         assert asset.status_code == 200
         assert len(asset.content) > 1000
+
+
+def test_public_lead_capture_is_stored_and_listed(client) -> None:
+    response = client.post(
+        "/leads",
+        json={
+            "name": "Ada Lovelace",
+            "email": "ada@example.com",
+            "company": "Analytical Engines",
+            "niche_id": "compliance_demo",
+            "source_url": "https://directory.example/texas",
+        },
+    )
+    assert response.status_code == 201
+    assert response.json()["forward_status"] == "not_configured"
+
+    leads = client.get("/leads").json()
+    assert len(leads) == 1
+    assert leads[0]["email"] == "ada@example.com"
+    assert client.get("/fleet/status").json()["counts"]["leads"] == 1
+    assert client.get("/analytics/revenue").json()["leads"] == 1
+
+
+def test_lead_honeypot_does_not_store_spam(client) -> None:
+    response = client.post(
+        "/leads",
+        json={"name": "Bot", "email": "bot@example.com", "website": "spam.example"},
+    )
+    assert response.status_code == 201
+    assert response.json() == {"accepted": True}
+    assert client.get("/leads").json() == []

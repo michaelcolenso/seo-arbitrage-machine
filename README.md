@@ -115,6 +115,8 @@ Settings load from `DSF_`-prefixed environment variables and an optional `.env`
 | `DSF_AGENT_TRANSPORT` | `mock` | `mcp`, `stdio`, or `mock` |
 | `DSF_MCP_SERVER_URL` | _unset_ | JSON-RPC/MCP endpoint (when transport is `mcp`) |
 | `DSF_API_TOKEN` | _unset_ | When set, the control-plane API requires this token |
+| `DSF_LEAD_CAPTURE_URL` | _unset_ | Public `/leads` URL embedded in generated lead-gen forms |
+| `DSF_LEAD_FORWARD_URL` | _unset_ | Optional CRM webhook for store-before-forward delivery |
 | `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` | _unset_ | Live Cloudflare Pages deploy |
 
 ## License
