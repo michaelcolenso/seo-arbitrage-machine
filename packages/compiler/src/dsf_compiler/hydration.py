@@ -15,9 +15,11 @@ from __future__ import annotations
 import json
 import math
 import re
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any, Protocol
+
+from dsf_core.config import get_settings
 
 # DuckDB type-name fragments that indicate a numeric column.
 _NUMERIC_TOKENS = (
@@ -208,9 +210,9 @@ def build_meta_payload(
         },
         "columns": [c["name"] for c in columns],
         "lead_gen": monetization == "local_lead_generation",
-        "lead_webhook": "",
+        "lead_webhook": get_settings().lead_capture_url or "",
         "confidence": evaluation.confidence,
         "calculator": build_calculator_block(columns),
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
     }
     return meta

@@ -11,6 +11,8 @@ worker, plus a self-contained operator console.
 | GET | `/healthz` | Liveness + version |
 | GET | `/fleet/status` | Ledger state counts across every lifecycle stage |
 | GET | `/analytics/revenue` | Revenue + traffic scorecard |
+| POST | `/leads` | Public lead capture (durable store + optional forwarding) |
+| GET | `/leads` | Captured lead listing (token protected) |
 | GET | `/opportunities` `/evaluations` `/deployments` `/optimizations` | Ledger listings |
 | POST | `/scout/run` | Start a scouting pass (background job) |
 | POST | `/evaluate/run` | Evaluate pending opportunities |

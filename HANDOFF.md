@@ -35,7 +35,7 @@ scout → evaluate → compile → deploy → optimize
 | API auth, durable jobs, CI | ✅ **Real** | Token-gated API; jobs persisted + restart-recoverable; CI runs the suite on every PR. |
 | Agent Bridge cognitive tasks | 🟡 **Mock by default** | `evaluate`, `schema_discovery`, `optimize_content` read file fixtures unless a real MCP/stdio agent runtime is attached. The *evaluation logic itself has never run against a real model.* |
 | Telemetry / analytics | 🟡 **Mock by default** | `MockTelemetrySource` returns synthetic metrics. A `CloudflareWebAnalyticsSource` (GraphQL RUM) exists; an **Ahrefs/GSC MCP** is also available to feed real numbers, but a fresh `.pages.dev` has no search data until indexed. |
-| Revenue / lead capture | ❌ **Not built** | The lead-gen form posts to a webhook with **no backend**. `revenue_cents` is only ever written by the mock telemetry source. There is no money path yet. |
+| Revenue / lead capture | 🟡 **Backend built** | Public leads are durably stored, valued from the matching opportunity, and optionally forwarded to a CRM webhook. Closing/payment attribution is not built; `revenue_cents` still comes from telemetry. |
 | Autonomous supervisor + cost guardrails | ❌ **Not built** | No perpetual `while True` driver, no `check_cloud_budgets()`. Each stage is invoked manually / via API. |
 
 ## 4. Credentials & config
@@ -63,13 +63,13 @@ columns → `deploy run --site-generation-id N --build --live` → live
 
 - **Milestone A — hardening:** ✅ CI · ✅ API auth · ✅ durable jobs · ✅ live integration tests
 - **Milestone B — first real deploy:** ✅ done (deploy proven; analytics half still mock until a site has traffic)
-- **Milestone C — revenue:** ❌ lead capture/store/forward backend + real `revenue_cents`
+- **Milestone C — revenue:** 🟡 lead capture/store/forward backend done; closing/payment attribution and real `revenue_cents` remain
 - **Milestone D — autonomy & safety:** ❌ supervisor loop, cost guardrails, resume-from-ledger boot
 - **Milestone E — content quality & scale:** ❌ enforce anti-thin-content/uniqueness at compile, internal linking, dataset-refresh cadence, pagination
 
 ## 7. Known gaps / risks
 
-- **No revenue path** — the business model (sell leads) is unimplemented.
+- **No payment attribution** — leads can be captured and forwarded, but sales/closing events do not yet write real revenue.
 - **Agent Bridge unproven in production** — all cognitive output is mock fixtures.
 - **Thin-content risk** — the ≥60% uniqueness rule is scored by the miner but not
   enforced at compile; low-row routes can still generate (Milestone E).

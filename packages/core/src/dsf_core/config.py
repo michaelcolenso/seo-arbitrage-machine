@@ -103,6 +103,14 @@ class Settings(BaseSettings):
             "'Authorization: Bearer <token>' or 'X-API-Key' header. Unset = open (dev)."
         ),
     )
+    lead_capture_url: str | None = Field(
+        default=None,
+        description="Public control-plane URL embedded in generated lead forms.",
+    )
+    lead_forward_url: str | None = Field(
+        default=None,
+        description="Optional CRM/webhook URL that receives captured leads.",
+    )
 
     # --- Storage paths ----------------------------------------------------
     data_dir: Path | None = Field(
@@ -128,6 +136,8 @@ class Settings(BaseSettings):
         "cloudflare_account_id",
         "api_token",
         "ahrefs_api_token",
+        "lead_capture_url",
+        "lead_forward_url",
     )
     @classmethod
     def _clean_secret(cls, value: str | None) -> str | None:

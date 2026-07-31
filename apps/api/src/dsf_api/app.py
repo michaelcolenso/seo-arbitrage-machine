@@ -13,6 +13,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
+import httpx
 from dsf_core import __version__ as core_version
 from dsf_core.config import get_settings
 from dsf_engine.models import (
@@ -21,12 +22,14 @@ from dsf_engine.models import (
     Deployment,
     Evaluation,
     JobStatus,
+    Lead,
     Optimization,
     ScoutJob,
     SiteGeneration,
 )
 from dsf_engine.sqlite_engine import init_db, session_scope
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func
@@ -38,6 +41,7 @@ from .schemas import (
     DeployRunRequest,
     EvaluateRunRequest,
     JobAccepted,
+    LeadCreateRequest,
     OptimizeRunRequest,
     ScoutRunRequest,
 )
@@ -64,7 +68,9 @@ def require_token(
     open (development); when set, every route except the console and health probe
     requires a matching ``Authorization: Bearer <token>`` or ``X-API-Key`` header.
     """
-    if request.url.path in _PUBLIC_PATHS:
+    if request.url.path in _PUBLIC_PATHS or (
+        request.url.path == "/leads" and request.method == "POST"
+    ):
         return
     expected = get_settings().api_token
     if not expected:
@@ -159,6 +165,14 @@ def create_app(*, inline_jobs: bool = False) -> FastAPI:
         lifespan=lifespan,
         dependencies=[Depends(require_token)],
     )
+    # Generated sites live on separate Pages origins. Credentials are disabled,
+    # so this only permits browsers to call intentionally public endpoints.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["POST"],
+        allow_headers=["Content-Type"],
+    )
 
     # Self-hosted console assets (CSS/JS). Mounted sub-apps bypass the global
     # auth dependency, so these stay publicly fetchable — they hold no secrets.
@@ -169,6 +183,39 @@ def create_app(*, inline_jobs: bool = False) -> FastAPI:
     @app.get("/healthz")
     def healthz() -> dict[str, str]:
         return {"status": "ok", "version": core_version}
+
+    @app.post("/leads", status_code=201)
+    def capture_lead(req: LeadCreateRequest) -> dict[str, Any]:
+        """Persist a lead before attempting best-effort CRM forwarding."""
+        if req.website:  # Bots fill the hidden field; accept without storing it.
+            return {"accepted": True}
+        settings = get_settings()
+        lead = Lead(**req.model_dump(exclude={"website"}))
+        with session_scope(settings) as session:
+            if req.niche_id:
+                opportunity = session.exec(
+                    select(ArbitrageOpportunity)
+                    .where(ArbitrageOpportunity.niche_id == req.niche_id)
+                    .order_by(ArbitrageOpportunity.created_at.desc())
+                ).first()
+                if opportunity:
+                    lead.estimated_value_cents = round(opportunity.estimated_lead_value * 100)
+            session.add(lead)
+        if settings.lead_forward_url:
+            try:
+                response = httpx.post(
+                    settings.lead_forward_url,
+                    json={**req.model_dump(exclude={"website"}), "lead_id": lead.id},
+                    timeout=10.0,
+                )
+                response.raise_for_status()
+                lead.forward_status = "forwarded"
+            except httpx.HTTPError as exc:
+                lead.forward_status = "failed"
+                lead.forward_error = str(exc)[:1000]
+            with session_scope(settings) as session:
+                session.add(lead)
+        return {"accepted": True, "lead_id": lead.id, "forward_status": lead.forward_status}
 
     @app.get("/", response_class=HTMLResponse)
     def console() -> str:
@@ -224,6 +271,7 @@ def create_app(*, inline_jobs: bool = False) -> FastAPI:
                 "site_generations": _count(session, SiteGeneration),
                 "deployments": _count(session, Deployment),
                 "optimizations": _count(session, Optimization),
+                "leads": _count(session, Lead),
             }
             deployments_by_status = _group_status(session, Deployment)
             live_sites = [
@@ -251,6 +299,8 @@ def create_app(*, inline_jobs: bool = False) -> FastAPI:
             revenue_cents = _sum(session, AnalyticsLog.revenue_cents)
             live = _count_where(session, Deployment, Deployment.status == JobStatus.COMPLETED)
             opportunities = _count(session, ArbitrageOpportunity)
+            leads = _count(session, Lead)
+            pipeline_value_cents = _sum(session, Lead.estimated_value_cents)
         ctr = (clicks / impressions) if impressions else 0.0
         return {
             "revenue_usd": round(revenue_cents / 100.0, 2),
@@ -259,6 +309,8 @@ def create_app(*, inline_jobs: bool = False) -> FastAPI:
             "ctr": round(ctr, 4),
             "live_deployments": live,
             "opportunities": opportunities,
+            "leads": leads,
+            "pipeline_value_usd": round(pipeline_value_cents / 100.0, 2),
         }
 
     @app.get("/opportunities")
@@ -276,6 +328,10 @@ def create_app(*, inline_jobs: bool = False) -> FastAPI:
     @app.get("/optimizations")
     def optimizations(limit: int = 50) -> list[dict[str, Any]]:
         return _list(Optimization, Optimization.created_at, limit, desc=True)
+
+    @app.get("/leads")
+    def leads(limit: int = 50) -> list[dict[str, Any]]:
+        return _list(Lead, Lead.created_at, limit, desc=True)
 
     return app
 

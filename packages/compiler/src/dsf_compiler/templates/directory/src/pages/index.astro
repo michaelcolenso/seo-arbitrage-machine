@@ -105,9 +105,12 @@ const datasetLd = {
               class="mt-4 grid gap-3 sm:grid-cols-3"
               method="post"
               action={leadWebhook || '#'}
-              x-data="{ sent: false }"
-              @submit={leadWebhook ? '' : 'sent = true; $event.preventDefault()'}
+              x-data="{ sent: false, failed: false, async submit(event) { if (!leadWebhook) { this.sent = true; return; } const body = Object.fromEntries(new FormData(event.target)); try { const response = await fetch(leadWebhook, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); if (!response.ok) throw new Error('request failed'); this.sent = true; event.target.reset(); } catch (_) { this.failed = true; } } }"
+              @submit.prevent="submit($event)"
             >
+              <input type="hidden" name="niche_id" value={meta.niche_id ?? ''} />
+              <input type="hidden" name="source_url" value={meta.canonical_base ?? ''} />
+              <input name="website" tabindex="-1" autocomplete="off" class="hidden" aria-hidden="true" />
               <input name="name" required placeholder="Name" class="rounded-lg border border-slate-300 px-3 py-2" />
               <input name="email" type="email" required placeholder="Work email" class="rounded-lg border border-slate-300 px-3 py-2" />
               <input name="company" placeholder="Company" class="rounded-lg border border-slate-300 px-3 py-2" />
@@ -115,6 +118,7 @@ const datasetLd = {
                 Request quotes
               </button>
               <p x-show="sent" class="text-sm text-green-700 sm:col-span-3">Thanks — we'll be in touch.</p>
+              <p x-show="failed" class="text-sm text-red-700 sm:col-span-3">Something went wrong. Please try again.</p>
             </form>
           </section>
         )}

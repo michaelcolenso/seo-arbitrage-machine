@@ -41,3 +41,12 @@ class JobAccepted(BaseModel):
     job_id: str
     kind: str
     status: str
+
+
+class LeadCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    email: str = Field(pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$", max_length=320)
+    company: str | None = Field(default=None, max_length=200)
+    niche_id: str | None = Field(default=None, max_length=200)
+    source_url: str | None = Field(default=None, max_length=2000)
+    website: str | None = Field(default=None, max_length=200, description="Spam honeypot.")
