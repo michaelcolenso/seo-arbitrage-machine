@@ -1,10 +1,8 @@
 """The ``seo-platform`` command-line entry point.
 
-This module owns the top-level Typer application.  Storage commands live in the
-``datasiteforge-engine`` package; they are mounted here via a *lazy* import so
-that ``dsf_core`` carries no import-time dependency on ``dsf_engine`` (the
-dependency only flows engine -> core).  Within a synced uv workspace both
-packages are always importable, so the ``db`` group resolves at runtime.
+This module owns the top-level Typer application. Storage and lifecycle commands
+are mounted lazily so package dependencies remain one-way while the synced uv
+workspace exposes one coherent control plane.
 """
 
 from __future__ import annotations
@@ -20,7 +18,7 @@ from .telemetry import configure_logging, get_console
 
 app = typer.Typer(
     name="seo-platform",
-    help="DataSiteForge control plane — workspace, agent bridge, and storage operations.",
+    help="DataSiteForge control plane — opportunity discovery, validation, build, deploy and learning.",
     no_args_is_help=True,
     add_completion=False,
 )
@@ -32,79 +30,79 @@ app.add_typer(agent_app, name="agent")
 
 
 def _mount_engine_commands() -> None:
-    """Lazily attach the engine command groups (`db`, `evaluate`)."""
     try:
         from dsf_engine.cli import db_app
         from dsf_engine.eval_cli import eval_app
-    except ModuleNotFoundError:  # engine not installed (core used standalone)
+    except ModuleNotFoundError:
         return
     app.add_typer(db_app, name="db")
     app.add_typer(eval_app, name="evaluate")
 
 
+def _mount_radar_commands() -> None:
+    """Attach the high-volume keyword/opportunity Radar."""
+    try:
+        from dsf_scout.radar.cli import radar_app
+    except ModuleNotFoundError:
+        return
+    app.add_typer(radar_app, name="radar")
+
+
 def _mount_scout_commands() -> None:
-    """Lazily attach the scouting (`scout`) command group from the scout package."""
     try:
         from dsf_scout.cli import scout_app
-    except ModuleNotFoundError:  # scout not installed (core used standalone)
+    except ModuleNotFoundError:
         return
     app.add_typer(scout_app, name="scout")
 
 
 def _mount_deployer_commands() -> None:
-    """Lazily attach the deployment (`deploy`) command group from the deployer."""
     try:
         from dsf_deployer.cli import deploy_app
-    except ModuleNotFoundError:  # deployer not installed (core used standalone)
+    except ModuleNotFoundError:
         return
     app.add_typer(deploy_app, name="deploy")
 
 
 def _mount_optimizer_commands() -> None:
-    """Lazily attach the optimization (`optimize`) command group from the optimizer."""
     try:
         from dsf_optimizer.cli import optimize_app
-    except ModuleNotFoundError:  # optimizer not installed (core used standalone)
+    except ModuleNotFoundError:
         return
     app.add_typer(optimize_app, name="optimize")
 
 
 def _mount_api_commands() -> None:
-    """Lazily attach the API server (`serve`) command from the api app."""
     try:
         from dsf_api.cli import serve_app
-    except ModuleNotFoundError:  # api app not installed (core used standalone)
+    except ModuleNotFoundError:
         return
     app.add_typer(serve_app, name="serve")
 
 
 def _mount_mcp_commands() -> None:
-    """Lazily attach the MCP server (`mcp`) command from the mcp package."""
     try:
         from dsf_mcp.cli import mcp_app
-    except ModuleNotFoundError:  # mcp server not installed (core used standalone)
+    except ModuleNotFoundError:
         return
     app.add_typer(mcp_app, name="mcp")
 
 
 def _mount_compiler_commands() -> None:
-    """Lazily attach the compilation (`compile`) command group."""
     try:
         from dsf_compiler.cli import compile_app
-    except ModuleNotFoundError:  # compiler not installed (core used standalone)
+    except ModuleNotFoundError:
         return
     app.add_typer(compile_app, name="compile")
 
 
 @app.callback()
 def _main() -> None:
-    """Initialise logging before any command runs."""
     configure_logging()
 
 
 @app.command()
 def version() -> None:
-    """Print the DataSiteForge version."""
     get_console().print(f"DataSiteForge [bold cyan]v{__version__}[/bold cyan]")
 
 
@@ -121,7 +119,6 @@ def _redact(name: str, value: object) -> str:
 
 @config_app.command("show")
 def config_show() -> None:
-    """Display the resolved settings (secrets redacted)."""
     settings = get_settings()
     table = Table(title="DataSiteForge configuration", show_lines=False)
     table.add_column("Setting", style="bold")
@@ -160,7 +157,6 @@ def agent_ping(
         help="Task type to dispatch (must have a matching mock fixture in mock mode).",
     ),
 ) -> None:
-    """Send a probe request through the Agent Bridge and report the result."""
     bridge = AgentBridge()
     transport = bridge.resolve_transport()
     response = bridge.request(task_type, {"probe": True})
@@ -180,9 +176,8 @@ def agent_ping(
         raise typer.Exit(code=1)
 
 
-# Attach storage, scouting, and compilation commands at import time so they
-# appear in `--help`.
 _mount_engine_commands()
+_mount_radar_commands()
 _mount_scout_commands()
 _mount_compiler_commands()
 _mount_deployer_commands()
