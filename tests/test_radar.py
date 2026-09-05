@@ -6,10 +6,10 @@ import csv
 from pathlib import Path
 
 from dsf_core.config import reload_settings
-from dsf_radar.models import KeywordCandidate, RadarDecision
-from dsf_radar.runner import RadarRunner
-from dsf_radar.scoring import score_candidate
-from dsf_radar.store import RadarStore
+from dsf_scout.radar.models import KeywordCandidate, RadarDecision
+from dsf_scout.radar.runner import RadarRunner
+from dsf_scout.radar.scoring import score_candidate
+from dsf_scout.radar.store import RadarStore
 
 
 def test_keyword_only_candidate_can_review_but_not_promote() -> None:
