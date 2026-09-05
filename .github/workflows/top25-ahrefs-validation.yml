@@ -1,0 +1,37 @@
+name: Top 25 Ahrefs Validation
+
+on:
+  push:
+    branches:
+      - codex/opportunity-graph-telemetry-million-scan
+    paths:
+      - '.github/workflows/top25-ahrefs-validation.yml'
+      - 'data/validation/top25-trigger.txt'
+
+concurrency:
+  group: top25-ahrefs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      AHREFS_API_TOKEN: ${{ secrets.AHREFS_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv python install 3.11
+      - run: uv sync --frozen
+      - name: Validate highest-priority clusters
+        run: uv run python scripts/validate_top25.py --limit 25 --output artifacts/top25-ahrefs-validation.json
+      - name: Upload sanitized validation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: top25-ahrefs-validation
+          path: artifacts/top25-ahrefs-validation.json
+          if-no-files-found: error
+          retention-days: 30
