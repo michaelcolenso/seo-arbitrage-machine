@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-09-05T05:38:20Z",
+  "workflow_run_id": 33947719104,
+  "artifact_id": 9963847029,
+  "status": "BLOCKED",
+  "reason": "AHREFS_API_TOKEN repository secret is not configured",
+  "requested_cluster_limit": 25,
+  "verified_keyword_metrics": false,
+  "paid_provider_calls_made": 0,
+  "workflow_mode_after_check": "manual-only"
+}
