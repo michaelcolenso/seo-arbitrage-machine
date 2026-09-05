@@ -1,0 +1,34 @@
+name: Million Scan Reference
+on:
+  pull_request:
+    paths:
+      - 'packages/scout/src/dsf_scout/radar/**'
+      - 'packages/engine/src/dsf_engine/opportunity_graph.py'
+      - 'scripts/run_million_snapshot.py'
+      - '.github/workflows/million-scan-reference.yml'
+
+concurrency:
+  group: million-scan-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  reference-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv python install 3.11
+      - run: uv sync --frozen
+      - name: Execute canonical 1M Radar run
+        run: uv run python scripts/run_million_snapshot.py --output artifacts/public-data-million-v1.json
+      - name: Upload compact run snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-data-million-v1
+          path: artifacts/public-data-million-v1.json
+          if-no-files-found: error
+          retention-days: 30
