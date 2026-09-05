@@ -42,7 +42,7 @@ def _mount_engine_commands() -> None:
 def _mount_radar_commands() -> None:
     """Attach the high-volume keyword/opportunity Radar."""
     try:
-        from dsf_radar.cli import radar_app
+        from dsf_scout.radar.cli import radar_app
     except ModuleNotFoundError:
         return
     app.add_typer(radar_app, name="radar")
