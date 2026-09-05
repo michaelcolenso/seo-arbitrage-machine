@@ -91,6 +91,7 @@ class RadarRunner:
         batch = []
         last_row = resume_after
         accepted_this_call = 0
+        hit_limit = False
         try:
             with path.open("r", encoding="utf-8-sig", newline="") as handle:
                 reader = csv.DictReader(handle)
@@ -101,6 +102,7 @@ class RadarRunner:
                     if row_number <= resume_after:
                         continue
                     if max_rows is not None and accepted_this_call >= max_rows:
+                        hit_limit = True
                         break
                     last_row = row_number
                     try:
@@ -111,7 +113,10 @@ class RadarRunner:
                             promote_threshold=promote_threshold,
                         )
                     except (ValidationError, ValueError):
-                        self.store.record_error(run_id, checkpoint=str(row_number))
+                        # Do not advance the durable checkpoint independently of an
+                        # unsaved batch: a crash here must replay preceding rows rather
+                        # than silently skip valid candidates that were only in memory.
+                        self.store.record_error(run_id)
                         continue
 
                     batch.append(result)
@@ -122,7 +127,10 @@ class RadarRunner:
 
             if batch:
                 self.store.save_batch(run_id, batch, checkpoint=str(last_row))
-            self.store.mark_status(run_id, ScanStatus.COMPLETED)
+            self.store.mark_status(
+                run_id,
+                ScanStatus.PENDING if hit_limit else ScanStatus.COMPLETED,
+            )
             return run_id
         except Exception:
             if batch:
