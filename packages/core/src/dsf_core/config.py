@@ -50,10 +50,9 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
-        populate_by_name=True,  # allow constructing by field name despite aliases
+        populate_by_name=True,
     )
 
-    # --- Execution / agent runtime ---------------------------------------
     execution_mode: ExecutionMode = Field(
         default="standalone",
         description="Whether an orchestrating agent runtime is expected to be attached.",
@@ -70,15 +69,9 @@ class Settings(BaseSettings):
         default=None,
         description="JSON-RPC / MCP endpoint, used only when agent_transport == 'mcp'.",
     )
-    agent_timeout_seconds: float = Field(
-        default=60.0,
-        gt=0,
-        description="Timeout for a single Agent Bridge request.",
-    )
+    agent_timeout_seconds: float = Field(default=60.0, gt=0)
 
-    # --- Cloudflare (Phase 5 deploy) -------------------------------------
-    # Accept both the DSF_-prefixed name and the standard Cloudflare/wrangler
-    # env var name, so credentials already present for wrangler are picked up.
+    # Cloudflare deploy + verified HTTP analytics.
     cloudflare_api_token: str | None = Field(
         default=None,
         validation_alias=AliasChoices("DSF_CLOUDFLARE_API_TOKEN", "CLOUDFLARE_API_TOKEN"),
@@ -88,14 +81,25 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("DSF_CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_ACCOUNT_ID"),
     )
 
-    # --- Ahrefs (real keyword metrics for the Scout) ---------------------
+    # Search Console access is read-only. OAuth refresh remains an external concern;
+    # the platform accepts a short-lived bearer token through the runtime environment
+    # and never persists it in SQLite.
+    google_search_console_access_token: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "DSF_GOOGLE_SEARCH_CONSOLE_ACCESS_TOKEN",
+            "GOOGLE_SEARCH_CONSOLE_ACCESS_TOKEN",
+            "GSC_ACCESS_TOKEN",
+        ),
+    )
+
+    # Ahrefs real metrics are applied only after the cheap million-row discovery pass.
     ahrefs_api_token: str | None = Field(
         default=None,
         validation_alias=AliasChoices("DSF_AHREFS_API_TOKEN", "AHREFS_API_TOKEN"),
-        description="Ahrefs API v3 token; when set, the Scout scores with real metrics.",
+        description="Ahrefs API v3 token; when set, Scout can attach verified keyword metrics.",
     )
 
-    # --- Control-plane API ------------------------------------------------
     api_token: str | None = Field(
         default=None,
         description=(
@@ -104,35 +108,21 @@ class Settings(BaseSettings):
         ),
     )
 
-    # --- Storage paths ----------------------------------------------------
-    data_dir: Path | None = Field(
-        default=None,
-        description="Root directory for generated state. Defaults to <workspace>/data.",
-    )
-    sqlite_path: Path | None = Field(
-        default=None,
-        description="SQLite state store path. Defaults to <data_dir>/state.sqlite.",
-    )
-    duckdb_path: Path | None = Field(
-        default=None,
-        description="DuckDB analytics store path. Defaults to <data_dir>/analytics.duckdb.",
-    )
-    mock_dir: Path | None = Field(
-        default=None,
-        description="Directory of file-driven agent mocks. Defaults to <data_dir>/mocks.",
-    )
+    data_dir: Path | None = Field(default=None)
+    sqlite_path: Path | None = Field(default=None)
+    duckdb_path: Path | None = Field(default=None)
+    mock_dir: Path | None = Field(default=None)
 
     @field_validator(
         "mcp_server_url",
         "cloudflare_api_token",
         "cloudflare_account_id",
+        "google_search_console_access_token",
         "api_token",
         "ahrefs_api_token",
     )
     @classmethod
     def _clean_secret(cls, value: str | None) -> str | None:
-        """Strip surrounding whitespace (env vars often carry a trailing newline)
-        and treat an empty string as unset."""
         if value is None:
             return None
         value = value.strip()
@@ -140,7 +130,6 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _resolve_paths(self) -> Settings:
-        """Fill in any unset paths relative to the resolved data directory."""
         data_dir = self.data_dir or (find_workspace_root() / "data")
         self.data_dir = data_dir.resolve()
         if self.sqlite_path is None:
@@ -157,17 +146,11 @@ class Settings(BaseSettings):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def sqlite_url(self) -> str:
-        """SQLAlchemy/SQLModel connection URL for the SQLite state store."""
         return f"sqlite:///{self.sqlite_path}"
 
     @computed_field  # type: ignore[prop-decorator]
     @property
     def agent_runtime_attached(self) -> bool:
-        """Heuristic: is a real agent runtime reachable for cognitive tasks?
-
-        Production mode with a concrete MCP endpoint or an explicit stdio
-        transport counts as attached; everything else routes to mocks.
-        """
         if not self.is_production or self.execution_mode != "agent":
             return False
         if self.agent_transport == "mcp":
@@ -177,8 +160,7 @@ class Settings(BaseSettings):
         return False
 
     def ensure_directories(self) -> None:
-        """Create the data, mock, and store parent directories if missing."""
-        assert self.data_dir is not None  # populated by _resolve_paths
+        assert self.data_dir is not None
         assert self.sqlite_path is not None
         assert self.duckdb_path is not None
         assert self.mock_dir is not None
@@ -190,14 +172,9 @@ class Settings(BaseSettings):
 
 @functools.lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    """Return a process-wide cached :class:`Settings` instance."""
     return Settings()
 
 
 def reload_settings() -> Settings:
-    """Clear the settings cache and reload from the environment.
-
-    Primarily useful in tests that mutate environment variables.
-    """
     get_settings.cache_clear()
     return get_settings()

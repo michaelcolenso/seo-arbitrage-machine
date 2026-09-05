@@ -27,12 +27,28 @@ class RadarDecision(str, enum.Enum):
 
 
 class KeywordCandidate(BaseModel):
+    """One keyword-shaped signal plus optional business evidence.
+
+    ``volume``/``cpc``/``kd`` can carry provider metrics or cheap discovery priors.
+    The provenance flags are promotion gates: generated priors are useful for ranking
+    a million-row universe but can never masquerade as verified SEO measurements.
+    """
+
     keyword: str = Field(min_length=1)
     source: str = "unknown"
     volume: int = Field(default=0, ge=0)
     cpc: float = Field(default=0.0, ge=0.0)
     kd: float = Field(default=100.0, ge=0.0, le=100.0)
     intent: str = "unknown"
+    metrics_source: str = "unknown"
+    metrics_verified: bool = True  # backwards-compatible for imported provider CSVs
+
+    family_id: str | None = None
+    geography: str | None = None
+    decision: str | None = None
+    product_pattern: str | None = None
+    data_source_name: str | None = None
+    data_source_url: str | None = None
 
     buyer: str | None = None
     decision_value: float | None = Field(default=None, ge=0.0, le=10.0)
@@ -41,6 +57,7 @@ class KeywordCandidate(BaseModel):
     complexity: float | None = Field(default=None, ge=1.0, le=10.0)
     data_leverage: float | None = Field(default=None, ge=0.0, le=10.0)
     evidence_quality: float | None = Field(default=None, ge=0.0, le=10.0)
+    business_evidence_verified: bool = True  # backwards-compatible for existing enriched rows
 
 
 class ScoredCandidate(BaseModel):

@@ -41,6 +41,7 @@ from .schemas import (
     OptimizeRunRequest,
     ScoutRunRequest,
 )
+from .telemetry_routes import telemetry_router
 
 _STATIC_DIR = Path(__file__).parent / "static"
 
@@ -163,6 +164,7 @@ def create_app(*, inline_jobs: bool = False) -> FastAPI:
     # Self-hosted console assets (CSS/JS). Mounted sub-apps bypass the global
     # auth dependency, so these stay publicly fetchable — they hold no secrets.
     app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
+    app.include_router(telemetry_router)
 
     # -- health & console -------------------------------------------------
 

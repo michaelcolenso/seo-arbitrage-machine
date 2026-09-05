@@ -6,113 +6,190 @@ Last updated: 2026-09-04
 
 **Repository:** `michaelcolenso/seo-arbitrage-machine`
 
-This repository is now the integration target for the SEO Arbitrage Platform.
-Other implementations are treated as source material, not parallel production systems.
+This repository is the integration target for the SEO Arbitrage Platform. Other
+implementations are source material, not parallel production systems.
 
-## What survives from each predecessor
-
-### DataSiteForge / seo-arbitrage-machine — production foundation
-Keep and extend:
-- SQLite orchestration ledger and additive migrations
-- DuckDB dataset profiling/analytics
-- Scout and Ahrefs keyword enrichment
-- Evaluator + Agent Bridge
-- Astro compiler/hydration
-- Cloudflare deployment
-- analytics optimizer
-- FastAPI control plane
-- MCP interface
-- structured telemetry and failure isolation
-
-### agentic-arbitrage — lifecycle intelligence
-Port the useful concepts, not the duplicate stack:
-- pain-signal discovery (Red Queen)
-- explicit validation experiments (Midwife)
-- evidence completeness / ready-to-fund gates
-- portfolio promote/hold/cull decisions (Mortician)
-- archive outcomes and learn from failures
-
-Do not port:
-- fabricated production metrics
-- fixed thresholds disguised as universal truth
-- duplicate storage/orchestration layers
-
-### codex-seo-machine — editorial contracts
-Port as deterministic factory gates:
-- explicit search intent
-- differentiation angle
-- conversion path
-- information gain
-- claim/evidence support
-- internal-link opportunities
-- anti-repetition / anti-thin-content checks
-
-Do not port:
-- Phase-0 command stubs where working DataSiteForge components already exist
-
-### OpportunityForge / Build What Pays — decision philosophy
-This is the governing product logic:
+## Governing product logic
 
 `signal/data → expensive decision → buyer → revenue → product → SEO distribution`
 
-The platform must reject traffic-only opportunities even when keyword economics look attractive.
+Traffic is a discovery/distribution signal. It is not the business objective.
 
 ## Canonical component map
 
 | Concept | Canonical implementation | Status |
 |---|---|---|
-| Radar / radar-v2 | `packages/scout/src/dsf_scout/radar` | ACTIVE — unified implementation |
-| Dataset discovery / crawler | `packages/scout` + future source adapters | ACTIVE foundation; adapters to expand |
-| Opportunity evaluation | `packages/engine` | ACTIVE; money-first contract to deepen |
-| Factory / site build | `packages/compiler` | ACTIVE; deterministic prebuild gate added |
+| Radar / radar-v2 | `packages/scout/src/dsf_scout/radar` | ACTIVE — million-row reference run completed |
+| Dataset discovery / crawler | `packages/scout` | ACTIVE foundation; source adapters to expand |
+| Opportunity Graph | `packages/engine/src/dsf_engine/opportunity_graph.py` | ACTIVE |
+| Opportunity evaluation | `packages/engine` | ACTIVE; money-first contract |
+| Factory / site build | `packages/compiler` | ACTIVE; deterministic prebuild gate |
 | Deployment | `packages/deployer` | ACTIVE |
-| Portfolio learning | `packages/optimizer` | ACTIVE; evidence-safe portfolio policy added |
-| API | `apps/api` | ACTIVE |
+| Acquisition/business evidence | `packages/optimizer/src/dsf_optimizer/evidence.py` | ACTIVE — GSC, Cloudflare, first-party events |
+| Portfolio learning | `packages/optimizer` | ACTIVE; evidence-safe policy |
+| API | `apps/api` | ACTIVE; protected `/telemetry` routes added |
 | MCP | `packages/mcp` | ACTIVE |
-| 1M-keyword scan | Radar SQLite run ledger | IMPLEMENTED foundation; production run not yet executed |
+| 1M-keyword scan | Radar SQLite run ledger | COMPLETED reference run + durable compact snapshot |
 
-## 1M-keyword scan contract
+## Measured 1M reference run
 
-Every production scan must have a durable `run_id` and report:
-- total expected
-- processed
-- promoted
-- review
-- rejected
-- errors
-- spend
-- checkpoint
-- started/completed timestamps
-- top candidates
+Canonical run: `public-data-million-v1`
 
-A keyword may reach `REVIEW` from SEO metrics alone. It may reach `PROMOTE` only after
-buyer and business evidence are populated. `PROMOTE` means "advance to deep validation",
-not "generate a site".
+The universe is deterministic and exactly:
 
-## Current branch
+- 40 ranked public-data opportunity families
+- 50 states
+- 5 family-specific buyer roles
+- 10 intent patterns
+- 10 modifiers
 
-`codex/unified-seo-arbitrage-platform`
+= **1,000,000 keyword-shaped discovery signals**.
 
-This branch establishes the canonical architecture, observable Radar, a prebuild quality
-gate, and an evidence-based portfolio decision policy.
+Reference workflow run `33946767199` executed the actual branch code against a real
+temporary SQLite ledger and completed successfully.
 
-## Implemented in this consolidation
+| Metric | Result |
+|---|---:|
+| Processed | 1,000,000 |
+| REVIEW | 612,730 |
+| REJECT | 387,270 |
+| PROMOTE | 0 |
+| Errors | 0 |
+| Paid keyword API spend | $0.00 |
+| Checkpoint | 1,000,000 |
+| Scan + resolve elapsed | 82.418 s |
+| Opportunity clusters | 200 |
+| Opportunity Graph nodes | 374 |
+| Opportunity Graph edges | 800 |
+| Initial paid-metric queue | 200 |
 
-1. Streaming, resumable CSV keyword scans with durable run counters and checkpoints.
-2. Two-stage scoring that cannot promote a keyword without buyer/business evidence.
-3. `seo-platform radar init|scan|status|top` commands.
-4. Compiler prebuild rejection for known low-confidence/thin Scout opportunities.
-5. Portfolio actions `METRICS_REQUIRED`, `HOLD`, `ACCELERATE`, `SCALE`, and `CULL`,
-   with destructive decisions blocked when verified/business metrics are absent.
-6. Canonical architecture and repository policy documented in `docs/UNIFIED_PLATFORM.md`.
+The compact immutable repository snapshot is:
+
+`data/run_snapshots/public-data-million-v1.json`
+
+The corresponding GitHub Actions artifact had SHA-256:
+
+`c602379ec29c8c5333033a8245dc49bb54c24029ff50b38b7266d3fe3657848b`
+
+### Evidence interpretation
+
+The million-row universe deliberately uses deterministic ranking priors rather than
+pretending they are provider measurements:
+
+- `metrics_source=deterministic-prior:v1`
+- `metrics_verified=false`
+- `business_evidence_verified=false`
+
+Generated priors can reach `REVIEW`; they cannot reach `PROMOTE`. An independent
+reference execution caught and corrected a gate bug where populated catalog priors
+were initially being treated as enrichment. Business scoring now requires explicitly
+verified business evidence.
+
+## Opportunity Graph / resolver
+
+`REVIEW` keywords are collapsed into family × buyer opportunity clusters rather than
+creating one research job per keyword.
+
+The graph currently represents:
+
+- opportunities
+- datasets
+- buyers
+- expensive decisions
+- product patterns
+- verified keyword-metric evidence
+
+Core relationships:
+
+- `USES_DATASET`
+- `SERVES_BUYER`
+- `IMPROVES_DECISION`
+- `PACKAGED_AS`
+- `HAS_VERIFIED_KEYWORD_METRIC`
+
+The full initial funnel creates 200 opportunity clusters and therefore at most 200
+first-tranche provider metric checks, rather than hundreds of thousands of paid calls.
+
+## Paid keyword verification
+
+The existing Ahrefs v3 client is now connected to the cluster queue:
+
+```bash
+seo-platform radar verify-metrics --limit 25
+```
+
+Paid verification is explicit, not automatic. A verified provider metric replaces the
+representative row's prior volume/CPC/KD and attaches metric evidence to the graph, but
+the opportunity remains in `REVIEW` until its buyer/decision/source/monetization evidence
+is separately verified.
+
+## Production evidence / telemetry
+
+The platform now keeps acquisition evidence separate from commercial outcomes.
+
+### Acquisition
+
+- Google Search Console: query/page/date impressions, clicks, CTR and position.
+- Cloudflare: current GraphQL `httpRequestsAdaptiveGroups` path-level requests/visits.
+
+### Commercial outcomes
+
+First-party idempotent events are the source of truth:
+
+- `LEAD`
+- `CONVERSION`
+- `REVENUE`
+
+Revenue is never inferred from traffic analytics.
+
+Protected control-plane routes:
+
+- `POST /telemetry/sites`
+- `POST /telemetry/events`
+- `POST /telemetry/{site_key}/sync/gsc`
+- `POST /telemetry/{site_key}/sync/cloudflare`
+- `GET /telemetry/{site_key}/summary`
+
+Live GSC/Cloudflare observations are not yet present in the repository ledger because
+runtime credentials/site registrations are deployment-specific. The ingestion path and
+first-party event ledger are implemented and tested.
+
+## What survives from each predecessor
+
+### DataSiteForge
+- SQLite/DuckDB production plumbing
+- Scout + Ahrefs enrichment
+- Evaluator / Agent Bridge
+- Astro compiler
+- Cloudflare deployment
+- optimizer
+- FastAPI + MCP
+- structured telemetry and failure isolation
+
+### Agentic Arbitrage
+- evidence completeness
+- validation lifecycle
+- portfolio promote/hold/cull concepts
+- outcome learning
+
+### Codex SEO Machine
+- explicit quality contracts
+- information-gain / differentiation principles
+- anti-thin-content direction
+
+### OpportunityForge / Build What Pays
+- buyer/decision/revenue-first scoring philosophy
+- kill weak ideas before overbuilding
+- Opportunity Graph as the long-term moat
 
 ## Next integration gates
 
-1. Feed Radar `REVIEW` rows into an enrichment/resolution job that attaches buyer,
-   decision, public-data sources and evidence.
-2. Persist a unified Opportunity Graph across keyword signals, pain signals, datasets,
-   buyers, decisions, monetization patterns and outcomes.
-3. Extend the current prebuild gate with post-hydration information-gain, claim-support,
-   internal-link and route-level thin-content checks.
-4. Connect verified Search Console/Cloudflare/conversion/revenue metrics to portfolio policy.
-5. Run the production 1M-keyword scan and preserve the immutable run snapshot.
+1. Verify the first tranche of the 200 cluster representatives with Ahrefs or another
+   provider and rerank on measured demand/CPC/difficulty.
+2. Build the business-evidence verifier that changes clusters from
+   `NEEDS_BUSINESS_VERIFICATION` to promotion-eligible only when buyer, source,
+   competition, monetization and expensive-decision claims are supported.
+3. Register live products and ingest real GSC/Cloudflare + first-party outcome events.
+4. Feed verified revenue/conversion evidence back into opportunity-family priors.
+5. Extend factory QA with post-hydration information-gain, claim-support, internal-link
+   and route-level thin-content checks.

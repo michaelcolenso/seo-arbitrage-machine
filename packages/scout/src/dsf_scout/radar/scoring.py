@@ -37,6 +37,11 @@ def score_candidate(
     min_business_dimension: float = 5.0,
     min_evidence_quality: float = 5.0,
 ) -> ScoredCandidate:
+    """Score cheaply first, then apply business scoring only to verified evidence.
+
+    Generated keyword and business priors may rank/label a huge universe, but they
+    are not allowed to bypass the first-stage rejection filter or reach PROMOTE.
+    """
     dims = scan_dimensions(candidate)
     scan_score = round(
         10.0
@@ -57,16 +62,22 @@ def score_candidate(
         candidate.data_leverage,
         candidate.evidence_quality,
     )
-    enriched = bool(candidate.buyer and all(v is not None for v in business_values))
+    business_complete = bool(candidate.buyer and all(v is not None for v in business_values))
+    enriched = bool(business_complete and candidate.business_evidence_verified)
 
     if not enriched:
         if scan_score >= review_threshold:
+            reason = (
+                "SEO economics justify business enrichment; buyer/evidence incomplete"
+                if not business_complete
+                else "SEO economics justify review; business evidence is unverified catalog-prior data"
+            )
             return ScoredCandidate(
                 keyword=candidate.keyword,
                 source=candidate.source,
                 scan_score=scan_score,
                 decision=RadarDecision.REVIEW,
-                reasons=["SEO economics justify business enrichment; buyer/evidence incomplete"],
+                reasons=[reason],
                 candidate=candidate,
             )
         return ScoredCandidate(
@@ -109,6 +120,8 @@ def score_candidate(
         reasons.append("defensibility below promotion gate")
     if candidate.evidence_quality < min_evidence_quality:
         reasons.append("evidence quality below promotion gate")
+    if not candidate.metrics_verified:
+        reasons.append(f"keyword metrics are unverified ({candidate.metrics_source})")
     if opportunity_score < promote_threshold:
         reasons.append(
             f"opportunity score {opportunity_score:.1f} below promotion threshold {promote_threshold:.1f}"
@@ -116,7 +129,7 @@ def score_candidate(
 
     decision = RadarDecision.PROMOTE if not reasons else RadarDecision.REVIEW
     if decision == RadarDecision.PROMOTE:
-        reasons.append("buyer and money-first promotion gates passed")
+        reasons.append("verified buyer, evidence and keyword-metric promotion gates passed")
 
     return ScoredCandidate(
         keyword=candidate.keyword,
