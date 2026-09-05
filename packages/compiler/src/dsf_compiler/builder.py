@@ -1,11 +1,8 @@
 """The Phase 4 compilation lifecycle engine.
 
 ``SiteCompiler.compile`` turns one ``APPROVED`` :class:`Evaluation` into a hydrated
-Astro site: it copies the chosen fixed-invariant template, overwrites only the
-``src/data/*.json`` hydration layer, and records a ``SiteGeneration`` row in the
-ledger.  Every failure mode is caught and returned as a structured
-``CompileReport`` (``AGENT_ACTION_REQUIRED`` / ``REJECTED``) — the compiler never
-raises into caller code, satisfying the defensive-failure-isolation mandate.
+Astro site only after a deterministic quality gate passes. Every failure mode is
+returned as a structured ``CompileReport`` rather than escaping into caller code.
 """
 
 from __future__ import annotations
@@ -31,7 +28,7 @@ from dsf_engine.models import (
     utcnow,
 )
 from dsf_engine.sqlite_engine import init_db, session_scope
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from .hydration import (
     build_meta_payload,
@@ -39,10 +36,10 @@ from .hydration import (
     build_rows_payload,
     title_from,
 )
+from .quality import QualityPolicy, prebuild_quality_gate
 
 _log = get_logger("compiler.builder")
 
-# Directories that must never be copied from a template into a build.
 _COPY_IGNORE = shutil.ignore_patterns("node_modules", "dist", ".astro", ".git")
 
 
@@ -63,7 +60,7 @@ class CompileReport(BaseModel):
 
 
 class SiteCompiler:
-    """Compiles approved evaluations into hydrated Astro site builds."""
+    """Compiles approved, quality-cleared evaluations into Astro site builds."""
 
     def __init__(
         self,
@@ -72,14 +69,13 @@ class SiteCompiler:
         templates_dir: Path | None = None,
         row_limit: int = 500,
         route_limit: int = 500,
+        quality_policy: QualityPolicy | None = None,
     ) -> None:
         self.settings = settings or get_settings()
         self.route_limit = route_limit
-        # Templates ship as package data next to this module, so they resolve
-        # correctly from an installed wheel as well as the source workspace —
-        # never depending on the current working directory.
         self.templates_dir = templates_dir or (Path(__file__).resolve().parent / "templates")
         self.row_limit = row_limit
+        self.quality_policy = quality_policy or QualityPolicy()
 
     def compile(
         self,
@@ -116,11 +112,27 @@ class SiteCompiler:
                 message=f"evaluation verdict is {evaluation.verdict.value}, not approved",
             )
 
+        quality = prebuild_quality_gate(evaluation, opportunity, self.quality_policy)
+        if not quality.passed:
+            message = "; ".join(quality.reasons)
+            log_event(
+                _log,
+                "compiler.skip.quality_gate",
+                level=30,
+                evaluation_id=evaluation_id,
+                reasons=list(quality.reasons),
+            )
+            return CompileReport(
+                status="REJECTED",
+                evaluation_id=evaluation_id,
+                niche_id=getattr(opportunity, "niche_id", None),
+                template_type=evaluation.template_type.value,
+                error_type="QualityGateFailed",
+                message=message,
+            )
+
         niche_id = getattr(opportunity, "niche_id", None) or f"evaluation-{evaluation_id}"
         site_id = self._create_site_generation(evaluation)
-        # The site-generation id makes every build dir unique, so re-compiling the
-        # same evaluation (a retry, or a fixed dataset) never overwrites a prior
-        # generation's artifacts that an earlier row / deployment still points at.
         build_name = f"{_slugify(niche_id)}-e{evaluation_id}-s{site_id}"
 
         try:
@@ -129,8 +141,6 @@ class SiteCompiler:
             )
             built = self._maybe_build(build_path) if run_build else False
             if run_build and not built:
-                # A requested build that produced no dist/ must not look COMPLETED:
-                # downstream deploy would pick up a generation with no artifacts.
                 message = "requested build failed: npm install/build produced no dist/"
                 self._mark_site(
                     site_id,
@@ -200,8 +210,6 @@ class SiteCompiler:
                 message=str(exc),
             )
 
-    # -- pipeline stages ---------------------------------------------------
-
     def _hydrate(
         self,
         evaluation: Evaluation,
@@ -227,8 +235,6 @@ class SiteCompiler:
 
         niche_id = getattr(opportunity, "niche_id", None)
         canonical_base = f"https://{_slugify(niche_id)}.pages.dev" if niche_id else ""
-        # Programmatic per-route fan-out only applies to the directory theme;
-        # the calculator is a single parametric page.
         route_columns = (
             json.loads(evaluation.seo_high_volume_columns or "[]")
             if evaluation.template_type == TemplateType.DIRECTORY
@@ -262,8 +268,6 @@ class SiteCompiler:
 
         data_dir = build_dir / "src" / "data"
         data_dir.mkdir(parents=True, exist_ok=True)
-        # allow_nan=False guarantees we never emit invalid JSON (NaN/Infinity);
-        # _sanitise already nulls non-finite floats, this is the belt-and-suspenders.
         (data_dir / "rows.json").write_text(
             json.dumps(rows_payload, indent=2, allow_nan=False), encoding="utf-8"
         )
@@ -298,8 +302,6 @@ class SiteCompiler:
         except (OSError, subprocess.SubprocessError) as exc:
             log_event(_log, "compiler.build.failed", level=40, error=str(exc))
             return False
-
-    # -- ledger helpers ----------------------------------------------------
 
     def _load_evaluation(
         self, evaluation_id: int
