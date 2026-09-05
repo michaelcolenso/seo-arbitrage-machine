@@ -61,15 +61,15 @@ The platform must reject traffic-only opportunities even when keyword economics 
 
 | Concept | Canonical implementation | Status |
 |---|---|---|
-| Radar / radar-v2 | `packages/radar` | ACTIVE — new unified implementation |
+| Radar / radar-v2 | `packages/scout/src/dsf_scout/radar` | ACTIVE — unified implementation |
 | Dataset discovery / crawler | `packages/scout` + future source adapters | ACTIVE foundation; adapters to expand |
 | Opportunity evaluation | `packages/engine` | ACTIVE; money-first contract to deepen |
-| Factory / site build | `packages/compiler` | ACTIVE |
+| Factory / site build | `packages/compiler` | ACTIVE; deterministic prebuild gate added |
 | Deployment | `packages/deployer` | ACTIVE |
-| Portfolio learning | `packages/optimizer` | ACTIVE foundation; portfolio policy to deepen |
+| Portfolio learning | `packages/optimizer` | ACTIVE; evidence-safe portfolio policy added |
 | API | `apps/api` | ACTIVE |
 | MCP | `packages/mcp` | ACTIVE |
-| 1M-keyword scan | `packages/radar` SQLite run ledger | IMPLEMENTED foundation; production run not yet executed |
+| 1M-keyword scan | Radar SQLite run ledger | IMPLEMENTED foundation; production run not yet executed |
 
 ## 1M-keyword scan contract
 
@@ -93,7 +93,18 @@ not "generate a site".
 
 `codex/unified-seo-arbitrage-platform`
 
-This branch establishes the canonical architecture and first-class Radar package.
+This branch establishes the canonical architecture, observable Radar, a prebuild quality
+gate, and an evidence-based portfolio decision policy.
+
+## Implemented in this consolidation
+
+1. Streaming, resumable CSV keyword scans with durable run counters and checkpoints.
+2. Two-stage scoring that cannot promote a keyword without buyer/business evidence.
+3. `seo-platform radar init|scan|status|top` commands.
+4. Compiler prebuild rejection for known low-confidence/thin Scout opportunities.
+5. Portfolio actions `METRICS_REQUIRED`, `HOLD`, `ACCELERATE`, `SCALE`, and `CULL`,
+   with destructive decisions blocked when verified/business metrics are absent.
+6. Canonical architecture and repository policy documented in `docs/UNIFIED_PLATFORM.md`.
 
 ## Next integration gates
 
@@ -101,6 +112,7 @@ This branch establishes the canonical architecture and first-class Radar package
    decision, public-data sources and evidence.
 2. Persist a unified Opportunity Graph across keyword signals, pain signals, datasets,
    buyers, decisions, monetization patterns and outcomes.
-3. Enforce editorial/information-gain quality before compiler output can be deployed.
+3. Extend the current prebuild gate with post-hydration information-gain, claim-support,
+   internal-link and route-level thin-content checks.
 4. Connect verified Search Console/Cloudflare/conversion/revenue metrics to portfolio policy.
 5. Run the production 1M-keyword scan and preserve the immutable run snapshot.
