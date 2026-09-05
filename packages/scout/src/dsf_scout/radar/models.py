@@ -74,4 +74,5 @@ class ScanSummary(BaseModel):
     def completion_ratio(self) -> float | None:
         if not self.total_expected:
             return None
-        return min(1.0, self.processed_count / self.total_expected)
+        attempted = self.processed_count + self.error_count
+        return min(1.0, attempted / self.total_expected)
