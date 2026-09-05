@@ -8,7 +8,6 @@ authors = [{ name = "DataSiteForge" }]
 dependencies = [
     "datasiteforge-core",
     "datasiteforge-engine",
-    "datasiteforge-radar",
     "datasiteforge-scout",
     "datasiteforge-compiler",
     "datasiteforge-deployer",
@@ -28,7 +27,6 @@ members = ["packages/*", "apps/*"]
 [tool.uv.sources]
 datasiteforge-core = { workspace = true }
 datasiteforge-engine = { workspace = true }
-datasiteforge-radar = { workspace = true }
 datasiteforge-scout = { workspace = true }
 datasiteforge-compiler = { workspace = true }
 datasiteforge-deployer = { workspace = true }
