@@ -70,7 +70,7 @@ def score_candidate(
             reason = (
                 "SEO economics justify business enrichment; buyer/evidence incomplete"
                 if not business_complete
-                else "SEO economics justify review; business fields are catalog priors, not verified evidence"
+                else "SEO economics justify review; business evidence is unverified catalog-prior data"
             )
             return ScoredCandidate(
                 keyword=candidate.keyword,
