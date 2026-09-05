@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from typing import Any
 
 from dsf_engine.opportunity_graph import OpportunityGraphStore
-
 from dsf_scout.ahrefs import AhrefsEnricher, AhrefsError
 
 from .models import KeywordCandidate
@@ -38,12 +37,11 @@ class MetricQueueRunner:
         self.ahrefs = ahrefs or AhrefsEnricher(self.radar.settings)
 
     def run(self, *, limit: int = 200) -> MetricEnrichmentReport:
-        """Verify pending Ahrefs representatives and rescore their Radar rows."""
         self.graph.init_schema()
         if not self.ahrefs.available():
             raise AhrefsError("AHREFS_API_TOKEN is not configured")
 
-        with self.graph._connect() as conn:  # package-internal shared ledger
+        with self.graph._connect() as conn:
             pending = conn.execute(
                 """
                 SELECT id, run_id, cluster_key, keyword, provider
@@ -77,7 +75,7 @@ class MetricQueueRunner:
                 verified += 1
             except (AhrefsError, ValueError, KeyError) as exc:
                 failed += 1
-                self._mark_queue(queue_id, "FAILED", result={"error": str(exc)}, increment=True)
+                self._mark_queue(queue_id, "FAILED", result={"error": str(exc)})
 
         return MetricEnrichmentReport(
             attempted=attempted, verified=verified, empty=empty, failed=failed
@@ -101,16 +99,14 @@ class MetricQueueRunner:
             conn.execute(
                 """
                 UPDATE radar_keywords SET
-                    volume = ?, cpc = ?, kd = ?, metrics_source = COALESCE(metrics_source, ?),
-                    scan_score = ?, business_score = ?, opportunity_score = ?, decision = ?,
-                    reasons_json = ?, payload_json = ?, scored_at = ?
+                    volume = ?, cpc = ?, kd = ?, scan_score = ?, business_score = ?,
+                    opportunity_score = ?, decision = ?, reasons_json = ?, payload_json = ?, scored_at = ?
                 WHERE run_id = ? AND keyword = ?
                 """,
                 (
                     candidate.volume,
                     candidate.cpc,
                     candidate.kd,
-                    candidate.metrics_source,
                     rescored.scan_score,
                     rescored.business_score,
                     rescored.opportunity_score,
@@ -130,10 +126,9 @@ class MetricQueueRunner:
         keyword: str,
         metrics: dict[str, Any],
     ) -> None:
-        metric_key = f"ahrefs|{keyword.lower()}"
         metric_id = self.graph.upsert_node(
             "keyword_metric",
-            metric_key,
+            f"ahrefs|{keyword.lower()}",
             keyword,
             confidence=1.0,
             source="ahrefs:v3",
@@ -172,7 +167,6 @@ class MetricQueueRunner:
         status: str,
         *,
         result: dict[str, Any] | None = None,
-        increment: bool = False,
     ) -> None:
         with self.graph._connect() as conn:
             conn.execute(
@@ -184,7 +178,7 @@ class MetricQueueRunner:
                 """,
                 (
                     status,
-                    1 if increment or status == "RUNNING" else 0,
+                    1 if status == "RUNNING" else 0,
                     None if result is None else json.dumps(result, sort_keys=True),
                     _now(),
                     queue_id,
