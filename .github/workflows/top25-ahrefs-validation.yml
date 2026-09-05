@@ -1,9 +1,7 @@
 name: Top 25 Ahrefs Validation
 
 on:
-  push:
-    branches:
-      - codex/opportunity-graph-telemetry-million-scan
+  pull_request:
     paths:
       - '.github/workflows/top25-ahrefs-validation.yml'
       - 'data/validation/top25-trigger.txt'
