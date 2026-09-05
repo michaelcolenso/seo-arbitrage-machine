@@ -25,11 +25,12 @@ def prebuild_quality_gate(
     opportunity: ArbitrageOpportunity | None,
     policy: QualityPolicy | None = None,
 ) -> QualityDecision:
-    """Block low-confidence or structurally thin builds before artifacts are created.
+    """Block known low-quality builds before artifacts are created.
 
-    This gate intentionally uses only evidence already persisted in the ledger.
-    Richer editorial checks (claim support, information gain, conversion copy) belong
-    in the post-hydration audit, but these hard failures are knowable before compile.
+    Scout-produced opportunities carry ``source`` and a measured uniqueness ratio,
+    so the ratio is a hard gate for them. Older/manual ledger rows may predate that
+    measurement; those remain buildable for migration compatibility, while all new
+    discovery paths are expected to persist the score before compilation.
     """
     policy = policy or QualityPolicy()
     reasons: list[str] = []
@@ -37,7 +38,10 @@ def prebuild_quality_gate(
     if opportunity is None:
         reasons.append("evaluation has no linked opportunity")
     else:
-        if opportunity.uniqueness_potential_ratio < policy.min_uniqueness_ratio:
+        if (
+            opportunity.source is not None
+            and opportunity.uniqueness_potential_ratio < policy.min_uniqueness_ratio
+        ):
             reasons.append(
                 f"uniqueness {opportunity.uniqueness_potential_ratio:.2f} below "
                 f"{policy.min_uniqueness_ratio:.2f}"
