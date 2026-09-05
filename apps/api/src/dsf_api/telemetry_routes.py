@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from dsf_optimizer.evidence import EvidenceStore
+from dsf_core.config import get_settings
+from dsf_optimizer.evidence import (
+    CloudflareHTTPAnalyticsClient,
+    EvidenceStore,
+    EvidenceSync,
+    SearchConsoleClient,
+)
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
@@ -33,6 +39,11 @@ class BusinessEventRequest(BaseModel):
     verified: bool = True
 
 
+class SyncWindow(BaseModel):
+    start_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    end_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+
+
 @telemetry_router.post("/sites")
 def register_site(req: SiteRegistration) -> dict[str, Any]:
     store = EvidenceStore()
@@ -47,6 +58,48 @@ def record_event(req: BusinessEventRequest) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail="telemetry site not found")
     inserted = store.record_business_event(**req.model_dump())
     return {"status": "recorded" if inserted else "duplicate", "event_id": req.event_id}
+
+
+@telemetry_router.post("/{site_key}/sync/gsc")
+def sync_gsc(site_key: str, window: SyncWindow) -> dict[str, Any]:
+    settings = get_settings()
+    token = settings.google_search_console_access_token
+    if not token:
+        raise HTTPException(status_code=503, detail="Search Console access token is not configured")
+    store = EvidenceStore(settings)
+    if store.get_site(site_key) is None:
+        raise HTTPException(status_code=404, detail="telemetry site not found")
+    try:
+        rows = EvidenceSync(store).sync_search_console(
+            site_key,
+            SearchConsoleClient(token),
+            start_date=window.start_date,
+            end_date=window.end_date,
+        )
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"status": "ok", "source": "gsc", "rows": rows}
+
+
+@telemetry_router.post("/{site_key}/sync/cloudflare")
+def sync_cloudflare(site_key: str, window: SyncWindow) -> dict[str, Any]:
+    settings = get_settings()
+    token = settings.cloudflare_api_token
+    if not token:
+        raise HTTPException(status_code=503, detail="Cloudflare API token is not configured")
+    store = EvidenceStore(settings)
+    if store.get_site(site_key) is None:
+        raise HTTPException(status_code=404, detail="telemetry site not found")
+    try:
+        rows = EvidenceSync(store).sync_cloudflare(
+            site_key,
+            CloudflareHTTPAnalyticsClient(token),
+            start_date=window.start_date,
+            end_date=window.end_date,
+        )
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"status": "ok", "source": "cloudflare", "rows": rows}
 
 
 @telemetry_router.get("/{site_key}/summary")
