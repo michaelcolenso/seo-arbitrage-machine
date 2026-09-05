@@ -37,10 +37,10 @@ def score_candidate(
     min_business_dimension: float = 5.0,
     min_evidence_quality: float = 5.0,
 ) -> ScoredCandidate:
-    """Score cheaply first, then promote only on verified evidence.
+    """Score cheaply first, then apply business scoring only to verified evidence.
 
-    Generated priors can rank huge universes but are explicitly barred from PROMOTE.
-    Likewise, keyword economics cannot substitute for a verified buyer/business case.
+    Generated keyword and business priors may rank/label a huge universe, but they
+    are not allowed to bypass the first-stage rejection filter or reach PROMOTE.
     """
     dims = scan_dimensions(candidate)
     scan_score = round(
@@ -62,16 +62,22 @@ def score_candidate(
         candidate.data_leverage,
         candidate.evidence_quality,
     )
-    enriched = bool(candidate.buyer and all(v is not None for v in business_values))
+    business_complete = bool(candidate.buyer and all(v is not None for v in business_values))
+    enriched = bool(business_complete and candidate.business_evidence_verified)
 
     if not enriched:
         if scan_score >= review_threshold:
+            reason = (
+                "SEO economics justify business enrichment; buyer/evidence incomplete"
+                if not business_complete
+                else "SEO economics justify review; business fields are catalog priors, not verified evidence"
+            )
             return ScoredCandidate(
                 keyword=candidate.keyword,
                 source=candidate.source,
                 scan_score=scan_score,
                 decision=RadarDecision.REVIEW,
-                reasons=["SEO economics justify business enrichment; buyer/evidence incomplete"],
+                reasons=[reason],
                 candidate=candidate,
             )
         return ScoredCandidate(
@@ -116,8 +122,6 @@ def score_candidate(
         reasons.append("evidence quality below promotion gate")
     if not candidate.metrics_verified:
         reasons.append(f"keyword metrics are unverified ({candidate.metrics_source})")
-    if not candidate.business_evidence_verified:
-        reasons.append("buyer/business evidence is not verified")
     if opportunity_score < promote_threshold:
         reasons.append(
             f"opportunity score {opportunity_score:.1f} below promotion threshold {promote_threshold:.1f}"
