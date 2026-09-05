@@ -37,6 +37,11 @@ def score_candidate(
     min_business_dimension: float = 5.0,
     min_evidence_quality: float = 5.0,
 ) -> ScoredCandidate:
+    """Score cheaply first, then promote only on verified evidence.
+
+    Generated priors can rank huge universes but are explicitly barred from PROMOTE.
+    Likewise, keyword economics cannot substitute for a verified buyer/business case.
+    """
     dims = scan_dimensions(candidate)
     scan_score = round(
         10.0
@@ -109,6 +114,10 @@ def score_candidate(
         reasons.append("defensibility below promotion gate")
     if candidate.evidence_quality < min_evidence_quality:
         reasons.append("evidence quality below promotion gate")
+    if not candidate.metrics_verified:
+        reasons.append(f"keyword metrics are unverified ({candidate.metrics_source})")
+    if not candidate.business_evidence_verified:
+        reasons.append("buyer/business evidence is not verified")
     if opportunity_score < promote_threshold:
         reasons.append(
             f"opportunity score {opportunity_score:.1f} below promotion threshold {promote_threshold:.1f}"
@@ -116,7 +125,7 @@ def score_candidate(
 
     decision = RadarDecision.PROMOTE if not reasons else RadarDecision.REVIEW
     if decision == RadarDecision.PROMOTE:
-        reasons.append("buyer and money-first promotion gates passed")
+        reasons.append("verified buyer, evidence and keyword-metric promotion gates passed")
 
     return ScoredCandidate(
         keyword=candidate.keyword,
