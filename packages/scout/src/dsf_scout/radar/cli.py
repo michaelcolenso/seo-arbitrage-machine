@@ -11,6 +11,7 @@ from rich.table import Table
 from dsf_core.telemetry import get_console
 
 from .enrichment import OpportunityResolver
+from .metric_enrichment import MetricQueueRunner
 from .runner import RadarRunner
 from .store import RadarStore
 
@@ -95,6 +96,18 @@ def resolve_run(
     get_console().print(
         f"Resolved {report.reviewed_keywords:,} keywords into {report.clusters:,} clusters; "
         f"metric queue={report.metric_queue:,}; skipped={report.skipped:,}."
+    )
+
+
+@radar_app.command("verify-metrics")
+def verify_metrics(
+    limit: int = typer.Option(200, "--limit", min=1, max=1000),
+) -> None:
+    """Apply verified Ahrefs metrics to queued cluster representatives."""
+    report = MetricQueueRunner().run(limit=limit)
+    get_console().print(
+        f"Metric enrichment attempted={report.attempted:,}; verified={report.verified:,}; "
+        f"empty={report.empty:,}; failed={report.failed:,}."
     )
 
 
