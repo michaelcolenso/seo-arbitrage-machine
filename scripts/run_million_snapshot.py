@@ -71,7 +71,7 @@ def main() -> int:
                 "metric_queue": resolution.metric_queue,
                 "skipped": resolution.skipped,
                 "graph_counts": graph.graph_counts(),
-                "top_clusters": graph.top_clusters(run_id, limit=20),
+                "top_clusters": graph.top_clusters(run_id, limit=25),
             },
             "invariants": {
                 "generated_priors_may_promote": False,
