@@ -1,14 +1,7 @@
 name: Top 25 Ahrefs Validation
 
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/top25-ahrefs-validation.yml'
-      - 'data/validation/top25-trigger.txt'
-
-concurrency:
-  group: top25-ahrefs-${{ github.ref }}
-  cancel-in-progress: true
+  workflow_dispatch:
 
 jobs:
   validate:
