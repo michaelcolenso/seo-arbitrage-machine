@@ -1,0 +1,112 @@
+"""Typer commands for Radar."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import typer
+from rich.table import Table
+
+from dsf_core.telemetry import get_console
+
+from .runner import RadarRunner
+from .store import RadarStore
+
+radar_app = typer.Typer(help="Run and inspect large keyword opportunity scans.", no_args_is_help=True)
+
+
+@radar_app.command("init")
+def init_radar() -> None:
+    store = RadarStore()
+    store.init_schema()
+    get_console().print("[green]Radar schema ready.[/green]")
+
+
+@radar_app.command("scan")
+def scan(
+    csv_path: Path = typer.Argument(..., exists=True, readable=True),
+    name: str = typer.Option("keyword-scan", "--name"),
+    run_id: str | None = typer.Option(None, "--run-id", help="Reuse to resume a prior run."),
+    total: int | None = typer.Option(None, "--total", min=1),
+    batch_size: int = typer.Option(5000, "--batch-size", min=1),
+    max_rows: int | None = typer.Option(None, "--max-rows", min=1),
+    review_threshold: float = typer.Option(55.0, "--review-threshold", min=0, max=100),
+    promote_threshold: float = typer.Option(65.0, "--promote-threshold", min=0, max=100),
+) -> None:
+    runner = RadarRunner()
+    resolved = runner.scan_csv(
+        csv_path,
+        name=name,
+        run_id=run_id,
+        total_expected=total,
+        batch_size=batch_size,
+        max_rows=max_rows,
+        review_threshold=review_threshold,
+        promote_threshold=promote_threshold,
+    )
+    _render_summary(RadarStore(), resolved)
+
+
+@radar_app.command("status")
+def status(run_id: str | None = typer.Argument(None)) -> None:
+    store = RadarStore()
+    summary = store.get_summary(run_id)
+    if summary is None:
+        get_console().print("[yellow]No Radar runs found.[/yellow]")
+        raise typer.Exit(code=1)
+    _render_summary(store, summary.run_id)
+
+
+@radar_app.command("top")
+def top(
+    run_id: str | None = typer.Argument(None),
+    limit: int = typer.Option(20, "--limit", min=1, max=200),
+) -> None:
+    store = RadarStore()
+    summary = store.get_summary(run_id)
+    if summary is None:
+        get_console().print("[yellow]No Radar runs found.[/yellow]")
+        raise typer.Exit(code=1)
+    rows = store.top_candidates(summary.run_id, limit=limit)
+    table = Table(title=f"Radar top candidates · {summary.name}")
+    for heading in ("Decision", "Keyword", "Volume", "CPC", "KD", "Scan", "Opportunity", "Buyer"):
+        table.add_column(heading)
+    for row in rows:
+        table.add_row(
+            str(row["decision"]),
+            str(row["keyword"]),
+            f"{row['volume']:,}",
+            f"${row['cpc']:.2f}",
+            f"{row['kd']:.1f}",
+            f"{row['scan_score']:.1f}",
+            "—" if row["opportunity_score"] is None else f"{row['opportunity_score']:.1f}",
+            row["buyer"] or "—",
+        )
+    get_console().print(table)
+
+
+def _render_summary(store: RadarStore, run_id: str) -> None:
+    summary = store.get_summary(run_id)
+    if summary is None:
+        return
+    table = Table(title=f"Radar scan · {summary.name}")
+    table.add_column("Metric", style="bold")
+    table.add_column("Value")
+    completion = "unknown"
+    if summary.completion_ratio is not None:
+        completion = f"{summary.completion_ratio:.1%}"
+    for key, value in (
+        ("run_id", summary.run_id),
+        ("status", summary.status.value),
+        ("processed", f"{summary.processed_count:,}"),
+        ("expected", "—" if summary.total_expected is None else f"{summary.total_expected:,}"),
+        ("completion", completion),
+        ("promoted", f"{summary.promoted_count:,}"),
+        ("review", f"{summary.review_count:,}"),
+        ("rejected", f"{summary.rejected_count:,}"),
+        ("errors", f"{summary.error_count:,}"),
+        ("spend_usd", f"${summary.spend_usd:,.2f}"),
+        ("checkpoint", summary.checkpoint or "—"),
+    ):
+        table.add_row(key, str(value))
+    get_console().print(table)
