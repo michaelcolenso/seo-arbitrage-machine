@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "run_id": "public-data-million-v1",
+  "executed_at_utc": "2026-09-05T05:17:55Z",
+  "code_head": "637cdeba12e72c6445b905ee5a3c725beafe6387",
+  "workflow_run_id": 33946767199,
+  "workflow_artifact_id": 9963586763,
+  "workflow_artifact_sha256": "c602379ec29c8c5333033a8245dc49bb54c24029ff50b38b7266d3fe3657848b",
+  "universe": {
+    "generator": "generated-public-data-universe:v1",
+    "expected_rows": 1000000,
+    "family_count": 40,
+    "metrics_source": "deterministic-prior:v1",
+    "metrics_verified": false,
+    "business_evidence_verified": false
+  },
+  "result": {
+    "status": "COMPLETED",
+    "processed": 1000000,
+    "review": 612730,
+    "rejected": 387270,
+    "promoted": 0,
+    "errors": 0,
+    "spend_usd": 0.0,
+    "checkpoint": "1000000",
+    "elapsed_seconds": 82.418
+  },
+  "resolution": {
+    "reviewed_keywords": 612730,
+    "clusters": 200,
+    "graph_nodes": 374,
+    "graph_edges": 800,
+    "paid_metric_queue": 200,
+    "skipped": 0
+  },
+  "top_generated_prior_clusters": [
+    {"label": "contractor license verification for developers", "keyword_count": 4975, "max_scan_score": 92.06},
+    {"label": "H-1B employer sponsorship for immigration attorneys", "keyword_count": 4968, "max_scan_score": 92.05},
+    {"label": "H-1B employer sponsorship for recruiters", "keyword_count": 4967, "max_scan_score": 92.00},
+    {"label": "contractor license verification for estimators", "keyword_count": 4975, "max_scan_score": 91.96},
+    {"label": "H-1B employer sponsorship for employers", "keyword_count": 4964, "max_scan_score": 91.91},
+    {"label": "contractor license verification for contractors", "keyword_count": 4969, "max_scan_score": 91.81},
+    {"label": "H-1B employer sponsorship for visa applicants", "keyword_count": 4966, "max_scan_score": 91.73},
+    {"label": "contractor license verification for subcontractors", "keyword_count": 4969, "max_scan_score": 91.55},
+    {"label": "contractor license verification for property managers", "keyword_count": 4981, "max_scan_score": 91.54},
+    {"label": "H-1B employer sponsorship for HR teams", "keyword_count": 4978, "max_scan_score": 91.52},
+    {"label": "SBIR STTR awards for consultants", "keyword_count": 4798, "max_scan_score": 89.11},
+    {"label": "endangered species compliance for insurers", "keyword_count": 4803, "max_scan_score": 89.04},
+    {"label": "OFAC BIS sanctions screening for consultants", "keyword_count": 4812, "max_scan_score": 89.03},
+    {"label": "SBIR STTR awards for investors", "keyword_count": 4804, "max_scan_score": 88.99},
+    {"label": "building permit intelligence for subcontractors", "keyword_count": 4800, "max_scan_score": 88.98}
+  ],
+  "interpretation": "This snapshot records discovery priors, not verified search demand. Generated priors can reach REVIEW but cannot reach PROMOTE. The 200 cluster representatives are the maximum initial paid-metric verification queue; provider verification and separate business-evidence verification are required before promotion."
+}
