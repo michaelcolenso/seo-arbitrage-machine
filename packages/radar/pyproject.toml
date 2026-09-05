@@ -1,0 +1,19 @@
+[project]
+name = "datasiteforge-radar"
+version = "0.1.0"
+description = "DataSiteForge Radar: resumable million-keyword scanning and money-first opportunity triage."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "datasiteforge-core",
+    "pydantic>=2.6",
+    "typer>=0.12",
+    "rich>=13.7",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dsf_radar"]
