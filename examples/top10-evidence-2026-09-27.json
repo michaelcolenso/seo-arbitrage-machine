@@ -1,0 +1,12 @@
+[
+  {"opportunity_key":"permit|specialty-contractors","label":"Permit intelligence for specialty contractors","demand":4,"pain":4,"money":5,"serp_weakness":2,"buildability":5,"evidence_grade":"B","items":[]},
+  {"opportunity_key":"prevailing-wage|contractors","label":"Prevailing-wage bid/compliance intelligence","demand":4,"pain":5,"money":5,"serp_weakness":1,"buildability":4,"evidence_grade":"B","items":[]},
+  {"opportunity_key":"contractor-compliance|property-managers","label":"Contractor/vendor compliance for property managers","demand":4,"pain":5,"money":5,"serp_weakness":1,"buildability":4,"evidence_grade":"B","items":[]},
+  {"opportunity_key":"site-constraints|developers","label":"Environmental/site-constraint pre-screen","demand":4,"pain":5,"money":5,"serp_weakness":2,"buildability":3,"evidence_grade":"B","items":[]},
+  {"opportunity_key":"permit-contractor|developers","label":"Permit + contractor intelligence for developers","demand":4,"pain":4,"money":4,"serp_weakness":2,"buildability":5,"evidence_grade":"B","items":[]},
+  {"opportunity_key":"sanctions|lenders","label":"Sanctions monitoring for lenders","demand":5,"pain":5,"money":5,"serp_weakness":1,"buildability":2,"evidence_grade":"B","items":[]},
+  {"opportunity_key":"h1b|recruiters","label":"H-1B employer intelligence for recruiters","demand":4,"pain":3,"money":4,"serp_weakness":1,"buildability":5,"evidence_grade":"B","items":[]},
+  {"opportunity_key":"sbir|capture","label":"SBIR/STTR intelligence for consultants and capture teams","demand":3,"pain":3,"money":4,"serp_weakness":2,"buildability":5,"evidence_grade":"B","items":[]},
+  {"opportunity_key":"sbir|investors","label":"SBIR/STTR intelligence for investors","demand":3,"pain":3,"money":3,"serp_weakness":2,"buildability":5,"evidence_grade":"C","items":[]},
+  {"opportunity_key":"sbir|suppliers","label":"SBIR/STTR intelligence for suppliers","demand":2,"pain":3,"money":3,"serp_weakness":2,"buildability":5,"evidence_grade":"C","items":[]}
+]

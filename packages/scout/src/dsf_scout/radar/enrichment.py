@@ -66,7 +66,7 @@ class OpportunityResolver:
         *,
         min_scan_score: float = 55.0,
         max_keywords: int | None = None,
-        metric_provider: str = "ahrefs",
+        metric_provider: str | None = None,
     ) -> ResolverReport:
         """Cluster REVIEW rows by family + buyer and populate the Opportunity Graph.
 
@@ -133,7 +133,7 @@ class OpportunityResolver:
     ) -> None:
         family = cluster.family
         confidence = min(0.90, 0.45 + family.score * 0.04)
-        readiness = "NEEDS_METRICS" if family.data_source_name else "NEEDS_SOURCE_VALIDATION"
+        readiness = "NEEDS_EVIDENCE" if family.data_source_name else "NEEDS_SOURCE_VALIDATION"
         payload = {
             "family_id": family.id,
             "research_prior_score": family.score,
@@ -148,7 +148,7 @@ class OpportunityResolver:
             "geography_count": len(cluster.geographies),
             "sample_keywords": cluster.samples,
             "top_keyword": cluster.top_keyword,
-            "evidence_state": "catalog-prior; keyword metrics still require provider verification",
+            "evidence_state": "catalog-prior; independent demand, pain, money, SERP and buildability evidence required",
         }
         opportunity_id = self.graph.upsert_node(
             "opportunity",
@@ -194,13 +194,14 @@ class OpportunityResolver:
             sample_keywords=cluster.samples,
             readiness=readiness,
         )
-        self.graph.enqueue_metric_keyword(
-            run_id=run_id,
-            cluster_key=cluster_key,
-            keyword=cluster.top_keyword,
-            priority=cluster.max_scan_score + family.score,
-            provider=metric_provider,
-        )
+        if metric_provider:
+            self.graph.enqueue_metric_keyword(
+                run_id=run_id,
+                cluster_key=cluster_key,
+                keyword=cluster.top_keyword,
+                priority=cluster.max_scan_score + family.score,
+                provider=metric_provider,
+            )
 
 
 def _infer_family(keyword: str) -> OpportunityFamily | None:
