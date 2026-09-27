@@ -85,7 +85,7 @@ def main() -> int:
                 FROM metric_enrichment_queue q
                 JOIN radar_opportunity_clusters c
                   ON c.run_id = q.run_id AND c.cluster_key = q.cluster_key
-                JOIN opportunity_nodes n ON n.id = c.opportunity_node_id
+                JOIN opportunity_graph_nodes n ON n.id = c.opportunity_node_id
                 WHERE q.run_id = ?
                 ORDER BY q.priority DESC, q.id ASC
                 LIMIT ?
