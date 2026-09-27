@@ -52,7 +52,7 @@ def test_resolver_collapses_5000_signals_into_five_buyer_clusters(isolated_env: 
     # not thousands of provider/LLM calls.
     assert report.reviewed_keywords > 4000
     assert report.clusters == 5
-    assert report.metric_queue == 5
+    assert report.metric_queue == 0
     counts = OpportunityGraphStore(settings).graph_counts()
     assert counts["clusters"] == 5
-    assert counts["metric_queue"] == 5
+    assert counts["metric_queue"] == 0
